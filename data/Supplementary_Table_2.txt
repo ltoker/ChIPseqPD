@@ -1,0 +1,39 @@
+Region	Marker	beta	p-value	Significance
+Prefrontal cortex	Lys-Ac(17kDa):GAPDH	0.27	0.014	*
+Prefrontal cortex	a-tubulinK40c:a-tubulin	-0.04	0.713	
+Prefrontal cortex	H2AK5ac:H2A	-0.15	0.160	
+Prefrontal cortex	H2BK15ac:H2B	0.37	1.7E-05	***
+Prefrontal cortex	H3K9/K14ac:H3	0.41	3.9E-04	**
+Prefrontal cortex	H3K27ac:H3	0.40	4.5E-08	***
+Prefrontal cortex	H3K56ac:H3	0.22	0.010	**
+Prefrontal cortex	H4K5ac:H4	-0.08	0.345	
+Prefrontal cortex	H4K12ac:H4	0.30	0.005	**
+Prefrontal cortex	H4K16ac:H4	-0.14	0.202	
+Prefrontal cortex	H2A:GAPDH	0.37	2.7E-05	***
+Prefrontal cortex	H2B:GAPDH	0.41	1.1E-08	***
+Prefrontal cortex	H3:GAPDH	0.30	2.0E-07	***
+Prefrontal cortex	H4:GAPDH	0.38	1.9E-18	***
+Prefrontal cortex	SIRT1:b-tubulin	0.30	0.002	**
+Prefrontal cortex	SIRT2:b-tubulin	0.05	0.567	
+Prefrontal cortex	SIRT3:b-tubulin	0.27	0.003	**
+Prefrontal cortex	NUP188:GAPDH	0.15	0.163	
+Prefrontal cortex	NeuN:GAPDH	-0.14	0.050	
+Prefrontal cortex	GFAP:GAPDH	0.19	0.062	
+Prefrontal cortex	CNP1:GAPDH	0.38	3.9E-05	***
+Prefrontal cortex	CX3CR1:GAPDH	0.00	0.994	
+				
+Striatum	H3K9/K14ac:H3	-0.06	0.695	
+Striatum	H3K27ac:H3	0.20	0.034	*
+Striatum	H3:GAPDH	0.30	7.9E-05	***
+Striatum	NeuN:GAPDH	-0.12	0.227	
+Striatum	GFAP:GAPDH	0.18	0.135	
+Striatum	CNP1:GAPDH	0.16	0.146	
+Striatum	CX3CR1:GAPDH	-0.30	0.013	*
+				
+Cerebellum	H3K9/K14ac:H3	-0.33	0.007	**
+Cerebellum	H3K27ac:H3	0.20	0.016	*
+Cerebellum	H3:GAPDH	0.02	0.802	
+Cerebellum	Calbindin:GAPDH	0.27	0.048	*
+Cerebellum	GFAP:GAPDH	0.16	0.096	
+Cerebellum	CNP1:GAPDH	-0.25	0.057	
+Cerebellum	CX3CR1:GAPDH	0.05	0.698	
