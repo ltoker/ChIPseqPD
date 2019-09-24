@@ -61,7 +61,7 @@ GetGenomeAnno <- function(annots = c('hg19_basicgenes', 'hg19_genes_intergenic',
   annoFileCollapsed %<>% as(., "GRanges")
   
   #ADD enhancer information
-  annoFileCollapsed <- GetEnhancerData(annoFileCollapsed)
+  #annoFileCollapsed <- GetEnhancerData(annoFileCollapsed)  #this part is removed since for now the enhancer information is not beeing used.
   return(annoFileCollapsed)
 }
 
