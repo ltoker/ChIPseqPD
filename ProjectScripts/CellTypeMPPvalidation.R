@@ -4,7 +4,7 @@ if(!ResultsPath %in% list.dirs(full.names = F)){
 }
 ResultsPath = paste0(ResultsPath, "/")
 
-source("/data/Rprojects/GeneralScripts/generalFunc.R")
+source("generalFunc.R")
 source("ProjectScripts/ProjectFunctions.R")
 
 ##### Get relative cell proportion for based on differential NeuN positive and negative cell H3K27ac peaks ##########  
