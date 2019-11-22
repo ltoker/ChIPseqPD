@@ -333,7 +333,7 @@ SingnifBothHKandRLEFull %<>% spread(Var, value = Info) %>% mutate(RegionAnnot = 
 write.table(SingnifBothHKandRLEFull, file = "GeneralResults/SingnifBothHKandRLEFull.tsv", row.names = F, col.names = T, sep = "\t")
 
 ######################### Count correlation ##############
-RNAcounts <- readRDS("data/AdjestedCounts.Rds")
+RNAcounts <- readRDS("data/AdjustedCountsGon.Rds")
 NBB_DESeq2 <-readRDS("ResultsNBB_Final/NBBDEoutput.Rds")
 PV_DESeq2 <- readRDS("ResultsPV_Final/PVDEoutput.Rds")
 PV_DESeq2RLE <- readRDS("ResultsPV_Final/PVDEoutputRLE.Rds")
@@ -362,11 +362,15 @@ RNApeaksNBB <- promoterNBB[symbol %in% RNAcounts$AdjustedNBB$GeneSymbol,]
 
 GetChIP_RNAcor <- function(RNApeaks, DESseqOut, AdjCovar, Cohort = "PV", Name){
   RNAcohort = paste0("Adjusted", Cohort)
-  AdjustedPromoterPeak <- sapply(RNApeaks$PeakName, function(PeakName){
-    GetAdjCountDESeq(dds = DESseqOut, Gene = PeakName, adjCov = AdjCovar)
-  }) %>% t %>% data.frame
+  GeneList <- as.list(RNApeaks$PeakName)
+  names(GeneList) <- RNApeaks$PeakName
+  
+  AdjustedPromoterPeak <- mclapply(GeneList, function(PeakName){
+    GetAdjCountDESeq(dds = DESseqOut, Gene = PeakName, adjCov = AdjCovar) %>% t %>% data.frame
+  }, mc.cores = detectCores()) %>% rbindlist()
   
   names(AdjustedPromoterPeak) <- attr(DESseqOut, "colData")$SampleID
+  
   AdjustedPromoterPeak$PeakName <- sapply(rownames(AdjustedPromoterPeak), function(x){
     strsplit(x, "\\.")[[1]][1]
   })
@@ -466,9 +470,11 @@ ChIPrnaPV$ChIP_expCor$FC <- resultsPV$log2FoldChange[match(ChIPrnaPV$ChIP_expCor
 
 ChIPrnaPV$ChIP_expCor %<>% mutate(Delta = CorCont - CorPD)
 
+
 ChIPrnaPV_RLE <- GetChIP_RNAcor(RNApeaks = RNApeaksPV, AdjCovar = AdjCovarPV,
                                 DESseqOut = PV_DESeq2RLE, Cohort = "PV", Name = "PV_RLE")
 ChIPrnaPV_RLE$ChIP_expCor %<>% mutate(Delta = CorCont - CorPD)
+
 
 ChIPrnaNBB <- GetChIP_RNAcor(RNApeaks = RNApeaksNBB, AdjCovar = AdjCovarNBB,
                              DESseqOut = NBB_DESeq2, Cohort = "NBB", Name = "NBB")
