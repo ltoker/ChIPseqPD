@@ -10,8 +10,8 @@ GetDESeq2Results <- function(DESeqOut, coef, alpha = 0.05, indepFilter = TRUE){
 
 GetAdjCountDESeq <- function(dds, Gene,  adjCov){
   GeneRow <- which(rownames(dds) == Gene)
-  Mu <- log2(t(t(assays(dds)$mu[GeneRow,])/sizeFactors(dds)))
-  Counts <-  log2(t(t(assays(dds)$counts[GeneRow,])/sizeFactors(dds)))
+  Mu <- log2(t(t(assays(dds)$mu[GeneRow,])/sizeFactors(dds)) + 0.1)
+  Counts <-  log2(t(t(assays(dds)$counts[GeneRow,])/sizeFactors(dds)) +0.1)
   Resid <- Counts - Mu
   corrFactor <- sizeFactors(dds)
   Coef <- coef(dds)[GeneRow,]
@@ -67,26 +67,26 @@ AdjCovarNBB <- data.frame(Cov = c("sex_M_vs_F", "Batch_1_vs_0",
 
 
 #Get the corrected counts for all genes
-AdjustedPV <- as.list(GonDESeqResultsDF$PW$GeneSymbol)
-names(AdjustedPV) <- GonDESeqResultsDF$PW$GeneSymbol
+AdjustedPVlist <- as.list(GonDESeqResultsDF$PW$GeneSymbol)
+names(AdjustedPVlist) <- GonDESeqResultsDF$PW$GeneSymbol
 
-AdjustedPV <- mclapply(AdjustedPV, function(Gene){
+AdjustedPV <- mclapply(AdjustedPVlist, function(Gene){
   EnsemblID = GonDESeqResultsDF$PW %>% filter(GeneSymbol == Gene) %>% .$EnsemblID
   temp <- GetAdjCountDESeq(dds = GonDESeqOut$PW, Gene = EnsemblID, adjCov = AdjCovarPV) %>% t %>% data.frame()
 }, mc.cores = detectCores()) %>% rbindlist()
 
-AdjustedPV %<>% mutate(GeneSymbol = as.character(GonDESeqResultsDF$PW$GeneSymbol))
+AdjustedPV %<>%  mutate(GeneSymbol = names(AdjustedPVlist))
 
 
-AdjustedNBB <- as.list(GonDESeqResultsDF$NBB$GeneSymbol)
-names(AdjustedNBB) <- GonDESeqResultsDF$NBB$GeneSymbol
+AdjustedNBBlist <- as.list(GonDESeqResultsDF$NBB$GeneSymbol)
+names(AdjustedNBBlist) <- GonDESeqResultsDF$NBB$GeneSymbol
 
-AdjustedNBB <- mclapply(AdjustedNBB, function(Gene){
+AdjustedNBB <- mclapply(AdjustedNBBlist, function(Gene){
   EnsemblID = GonDESeqResultsDF$NBB %>% filter(GeneSymbol == Gene) %>% .$EnsemblID
   temp <- GetAdjCountDESeq(dds = GonDESeqOut$NBB, Gene = EnsemblID, adjCov = AdjCovarNBB) %>% t %>% data.frame()
 }, mc.cores = detectCores()) %>% rbindlist()
 
-AdjustedNBB %<>% mutate(GeneSymbol = as.character(GonDESeqResultsDF$NBB$GeneSymbol))
+AdjustedNBB %<>% mutate(GeneSymbol = names(AdjustedNBBlist))
 
 
 saveRDS(list(AdjustedPV = AdjustedPV, AdjustedNBB = AdjustedNBB), "data/AdjustedCountsGon.Rds")

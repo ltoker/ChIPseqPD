@@ -380,6 +380,8 @@ GetChIP_RNAcor <- function(RNApeaks, DESseqOut, AdjCovar, Cohort = "PV", Name){
     strsplit(x, "_")[[1]][3]
   })
   
+  AdjustedPromoterPeak %<>% filter(!duplicated(PeakGene)) %>% .[!grepl("^MIR|^SN", .$GeneSymbol),]
+  
   AdjustedPromoterPeak_Melt <- gather(AdjustedPromoterPeak, key = "SubjectID", value = AdjPromoter, -PeakName, -PeakGene, -GeneSymbol)
   AdjustedPromoterPeak_Melt$RNAid <- Metadata$sample_id_rna[match(AdjustedPromoterPeak_Melt$SubjectID, Metadata$subjectID)]
   
@@ -389,7 +391,7 @@ GetChIP_RNAcor <- function(RNApeaks, DESseqOut, AdjCovar, Cohort = "PV", Name){
     temp <- merge(AdjustedPromoterPeak_Melt %>% filter(RNAid == subj), SubjData, by = "GeneSymbol", sort = F)
     names(temp)[ncol(temp)] <- "AdjExpr"
     temp
-  }, simplify = F) %>% do.call(rbind, .)
+  }, simplify = F) %>% do.call(rbind, .) #%>% filter(is.finite(AdjPromoter), is.finite(AdjExpr))
   
   CombinedData$Group <- Metadata$condition[match(CombinedData$RNAid, Metadata$sample_id_rna)] %>%
     droplevels() %>% factor(levels = c("Cont", "PD"))
@@ -456,15 +458,18 @@ GetChIP_RNAcor <- function(RNApeaks, DESseqOut, AdjCovar, Cohort = "PV", Name){
   ggsave(paste0(ResultsPath,"ChiP_ExprCorMedian", Name, ".pdf"), Plot2, device = "pdf", width = 4, height = 2.5, dpi = 300, useDingbats = F)
   
     return(list(AdjustedPromoterPeak_Melt = AdjustedPromoterPeak_Melt,
-              ChIP_expCor = ChIP_expCor,
-              ThreshData = ThreshData,
-              BoxPlot = Plot,
-              MedianPlot = Plot2,
-              WilCoxOut = WilCoxOut))
+                CombinedData = CombinedData,
+                ChIP_expCor = ChIP_expCor,
+                ThreshData = ThreshData,
+                BoxPlot = Plot,
+                MedianPlot = Plot2,
+                WilCoxOut = WilCoxOut))
 }
 
 ChIPrnaPV <- GetChIP_RNAcor(RNApeaks = RNApeaksPV, AdjCovar = AdjCovarPV,
                             DESseqOut = PV_DESeq2, Cohort = "PV", Name = "PV")
+
+
 
 ChIPrnaPV$ChIP_expCor$FC <- resultsPV$log2FoldChange[match(ChIPrnaPV$ChIP_expCor$GeneSymbol, resultsPV$symbol)]
 

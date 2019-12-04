@@ -438,8 +438,8 @@ Count2CPM <- function(countData){
 
 GetAdjCountDESeq <- function(dds, Gene,  adjCov){
   GeneRow <- which(rownames(dds) == Gene)
-  Mu <- log2(t(t(assays(dds)$mu[GeneRow,])/sizeFactors(dds)))
-  Counts <-  log2(t(t(assays(dds)$counts[GeneRow,])/sizeFactors(dds)))
+  Mu <- log2(t(t(assays(dds)$mu[GeneRow,])/sizeFactors(dds)) + 0.1)
+  Counts <-  log2(t(t(assays(dds)$counts[GeneRow,])/sizeFactors(dds)) + 0.1)
   Resid <- Counts - Mu
   corrFactor <- sizeFactors(dds)
   Coef <- coef(dds)[GeneRow,]
