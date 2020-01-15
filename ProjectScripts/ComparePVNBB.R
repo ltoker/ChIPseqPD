@@ -22,7 +22,6 @@ CompareData <- sapply(c("results", "resultsNoCorrection", "resultsRLE", "results
     arrange(pvalue) %>% mutate(UniqueRegionGeneTypePeak = paste0(UniqueRegionGeneType, PeakName)) %>%
     filter(!duplicated(UniqueRegionGeneTypePeak))
   
-  
   AllData <- merge(NBBresults %>% select(PeakName, baseMean, log2FoldChange, pvalue, padj, symbol, UniqueRegionGeneType),
                    PVresults %>% select(PeakName, baseMean, log2FoldChange, pvalue, padj, UniqueRegionGeneType), by = "UniqueRegionGeneType",
                    suffixes = c(".NBB", ".PV"), all.x = F, all.y = F)
@@ -36,19 +35,19 @@ CompareData <- sapply(c("results", "resultsNoCorrection", "resultsRLE", "results
   AllData %<>% arrange(Region2)
   
   SignifBoth <- AllData %>% filter(padj.NBB < 0.05, padj.PV < 0.05) %>%
-    mutate(DuplCol = paste0(baseMean.NBB, baseMean.PV, symbol), CohorSignif = "Both") %>%
+    mutate(DuplCol = paste0(baseMean.NBB, baseMean.PV, UniqueRegionGeneType), CohorSignif = "Both") %>%
     filter(!duplicated(DuplCol)) %>% select(-matches("^Regio|Dupl")) %>% filter(!duplicated(UniqueRegionGeneType))
   SignifNBB <- AllData %>% filter(padj.NBB < 0.05, padj.PV > 0.05) %>% 
-    mutate(DuplCol = paste0(baseMean.NBB, baseMean.PV, symbol), CohorSignif = "NBB only") %>%
+    mutate(DuplCol = paste0(baseMean.NBB, baseMean.PV, UniqueRegionGeneType), CohorSignif = "NBB only") %>%
     filter(!duplicated(DuplCol)) %>% select(-matches("^Regio|Dupl")) %>% filter(!duplicated(UniqueRegionGeneType))
   SignifPV <- AllData %>% filter(padj.NBB > 0.05, padj.PV < 0.05) %>% 
-    mutate(DuplCol = paste0(baseMean.NBB, baseMean.PV, symbol), CohorSignif = "PV only") %>%
+    mutate(DuplCol = paste0(baseMean.NBB, baseMean.PV, UniqueRegionGeneType), CohorSignif = "PV only") %>%
     filter(!duplicated(DuplCol)) %>% select(-matches("^Regio|Dupl")) %>% filter(!duplicated(UniqueRegionGeneType))
   NonSignif <- AllData %>% filter(padj.NBB > 0.05, padj.PV > 0.05) %>% 
-    mutate(DuplCol = paste(baseMean.NBB, baseMean.PV), CohorSignif = "NS") %>%
+    mutate(DuplCol = paste(baseMean.NBB, baseMean.PV, UniqueRegionGeneType), CohorSignif = "NS") %>%
     filter(!duplicated(DuplCol)) %>% select(-matches("^Regio|Dupl")) %>% filter(!duplicated(UniqueRegionGeneType))
   Filtered <- AllData %>% filter(is.na(padj.NBB) | is.na(padj.PV)) %>% 
-    mutate(DuplCol = paste(baseMean.NBB, baseMean.PV), CohorSignif = "Filtered") %>%
+    mutate(DuplCol = paste(baseMean.NBB, baseMean.PV, UniqueRegionGeneType), CohorSignif = "Filtered") %>%
     filter(!duplicated(DuplCol)) %>% select(-matches("^Regio|Dupl")) %>% filter(!duplicated(UniqueRegionGeneType))
   AllData2 <- rbind(NonSignif, SignifNBB, SignifPV, SignifBoth, Filtered)
   
@@ -59,6 +58,7 @@ CompareData <- sapply(c("results", "resultsNoCorrection", "resultsRLE", "results
     gsub("_hg19_genes", "", x)
   })
   
+
   AllData2$CohorSignif <- factor(AllData2$CohorSignif, levels = c("Filtered", "NS", "NBB only", "PV only", "Both"))
   AllData2
 }, simplify = F)
@@ -159,18 +159,25 @@ CommonRegions$PDgene <- sapply(CommonRegions$symbol, function(gene){
 
 
 CommonRegions$metaP <- apply(CommonRegions %>% select(matches("pvalue")), 1,  function(region){
-  metap::sumlog(region)$p %>% signif(digits = 2)
+  metap::sumlog(region)$p
 })
 
 CommonRegions$GWAS <- "No"
 CommonRegions$GWAS[CommonRegions$symbol %in% as.character(PDgenes %>%
                                                           filter(GWAS_Nalls2019 == "YES") %>% .$Gene)] <- "Yes"
 
-CommonRegions$AdjmetaP <- p.adjust(CommonRegions$metaP, method = "BH")
+CommonRegions %<>% mutate(CommonPair = paste0("NBB.", PeakName.NBB, "PV.", PeakName.PV))
+
+#Adjusting metaP for the common peaks. The adjsutment is for the specific CommonPeaks pair 
+AdjPvalues <- data.frame(metaP = CommonRegions %>%filter(!duplicated(CommonPair)) %>% .$metaP)
+AdjPvalues$AdjmetaP <- p.adjust(AdjPvalues$metaP, method = "BH")
+AdjPvalues %<>% filter(!duplicated(metaP))
+
+CommonRegions <- merge(CommonRegions, AdjPvalues, by = "metaP")
+CommonRegions$metaP <- sapply(CommonRegions$metaP, function(x) signif(x, digits = 2))
+
 
 PeakNum <- CommonRegions %>%
-  group_by(symbol) %>% summarise(n = n()) %>% data.frame
-PromotNum <-  CommonRegions %>% filter(!is.na(symbol)) %>% .[grepl("promoter", .$UniqueRegionGeneType),]%>%
   group_by(symbol) %>% summarise(n = n()) %>% data.frame
 
 CommonRegions$PeakNum <- PeakNum$n[match(CommonRegions$symbol, PeakNum$symbol)]
@@ -316,11 +323,11 @@ names(ConfIntNBB)[1:2] <- c("low2.5", "high97.5")
 ConfIntNBB$Cohort  = "NBB"
 
 ConfIntAll <- rbind(ConfIntMeta, ConfIntPV, ConfIntNBB)
-ConfIntAll %<>% mutate(Covar = as.factor(Covar),
+ConfIntAll %<>% mutate(Covar = factor(Covar, levels = c("PDgeneYes","log10(EffectiveLength)","PeakNum")),
                        Cohort = as.factor(Cohort),
                        Direction = as.factor(Direction))
 
-levels(ConfIntAll$Covar) <- c("log10(EGL)", "PDgene", "TotalPeaks")
+levels(ConfIntAll$Covar) <- c("PDgene", "log10(EGL)", "TotalPeaks")
 ConfIntAll$Covar <- relevel(ConfIntAll$Covar, ref = "PDgene")
 ConfIntAll$Direction <- relevel(ConfIntAll$Direction, ref = "Hypoacetylated")
 ConfIntAll$Cohort <- factor(ConfIntAll$Cohort, levels = c("MetaP", "PW", "NBB"))
@@ -414,7 +421,7 @@ write.table(CommonRegions %>%
               select(symbol, PeakName.PV, PeakName.NBB,
                      log2FoldChange.PV, log2FoldChange.NBB,
                      pvalue.PV, pvalue.NBB,
-                     padj.PV, padj.NBB, metaP, AdjmetaP,
+                     padj.PV, padj.NBB, metaP, AdjmetaP,CohorSignif, CommonPair,
                      UniqueRegionGeneType, PDgene, PeakNum, EffectiveLength),
             file = paste0(ResultsPath, "CommonRegions.tsv"), sep = "\t", row.names = F, col.names = T)
 
@@ -437,6 +444,15 @@ SignifGenesOverlapUp <- intersect(SignifGenesPVup$symbol, SignifGenesNBBup$symbo
 
 SignifGenesOverlap <- c(SignifGenesOverlapDown, SignifGenesOverlapUp)
 
+SignifGenesOverlapDFPV <- resultsPV %>% filter(symbol %in% SignifGenesOverlap) %>%
+  arrange(padj) %>% filter(!duplicated(symbol)) %>% select(symbol, log2FoldChange, padj) %>% arrange(log2FoldChange)
+SignifGenesOverlapDFNBB <- resultsNBB %>% filter(symbol %in% SignifGenesOverlap) %>%
+  arrange(padj) %>% filter(!duplicated(symbol)) %>% select(symbol, log2FoldChange, padj) %>% arrange(log2FoldChange)
+SignifGenesOverlapDF <- merge(SignifGenesOverlapDFPV, SignifGenesOverlapDFNBB, by = "symbol", suffixes = c("_PW", "_NBB")) %>% arrange(padj_PW)
+SignifGenesOverlapDF %<>% mutate_if(is.numeric, function(x) signif(x, digits = 2))
+
+write.table(SignifGenesOverlapDF, paste0(ResultsPath, "ReplicatedGenes.tsv"), sep = "\t", row.names = F, col.names = T)
+
 #Hypoacetylated genes
 dhyper(x = length(SignifGenesOverlapDown),  #number of genes hypoacetylated DARs in both cohorts
        m = nrow(SignifGenesPVdown), #number of genes with hypoacetylated DARs in PV cohort
@@ -451,10 +467,10 @@ dhyper(x = length(SignifGenesOverlapUp),  #number of genes hypoacetylated DARs i
 
 ##Hypergeometric test for DAR overlap.
 #Genes are excluded if they were filtered out based on DESeq2 independent filtering
-dhyper(x = nrow(CommonRegions %>% filter(CohorSignif == "Both")),
-       m = nrow(CommonRegions %>% filter(CohorSignif %in%  c("PV only", "Both"))),
-       n = nrow(CommonRegions %>% filter(!CohorSignif %in%  c("PV only", "Both"))),
-       k = nrow(CommonRegions %>% filter(CohorSignif %in%  c("NBB only", "Both"))))
+dhyper(x = nrow(CommonRegions %>% filter(CohorSignif == "Both") %>% filter(!(duplicated(CommonPair)))),
+       m = nrow(CommonRegions %>% filter(CohorSignif %in%  c("PV only", "Both"))%>% filter(!(duplicated(CommonPair)))),
+       n = nrow(CommonRegions %>% filter(!CohorSignif %in%  c("PV only", "Both")) %>% filter(!(duplicated(CommonPair)))),
+       k = nrow(CommonRegions %>% filter(CohorSignif %in%  c("NBB only", "Both")) %>% filter(!(duplicated(CommonPair)))))
 
 
 #Hypergeomettric test for enrichment of PD implicated genes:
@@ -472,6 +488,7 @@ dhyper(x = length(PDsignifOverlap),  #number of PD hits with DARs in both cohort
        n = length(AllGenesOverlap), #number of genes represented by ChIP data in both cohorts which are not PDgene, NAs, miRNAs and snRNAs
        k = length(SignifGenesOverlap)) #number of genes with DARs in the same direction in both cohorts
 
+
 #Hypergeomettric test for enrichment of GWAS in based on metaP:
 CommonPDgeneAll <- CommonRegions %>% arrange(metaP) %>% filter(PDgene == "Yes", CohorSignif != "Filtered") %>%  filter(!duplicated(symbol))
 CommonPDgene_DARs <- CommonRegions %>% arrange(metaP) %>% filter(PDgene == "Yes", AdjmetaP < 0.05) %>%  filter(!duplicated(symbol))
@@ -483,6 +500,90 @@ dhyper(x = nrow(CommonPDgene_DARs),  #number of PD genes with common DARs in bot
        n = nrow(AllCommonPeakGenes), #number of genes represented by ChIP data in both cohorts which are not PD genes, NAs, miRNAs and snRNAs
        k =  nrow(SignifCommonPeakGenes)) #number of genes with common regions with adjusted metaP < 0.05 
 
+#Venn diagrams
+packageF("RVenn")
+packageF("VennDiagram")
+packageF("RAM")
+
+DFsignif <- list()
+DFsignif$AllGenes_PW <- resultsPV %>% filter(!is.na(padj)) %>% filter(!duplicated(symbol), !is.na(symbol)) %>% .$symbol
+DFsignif$HypoAc_PW <- resultsPV %>% filter(padj < 0.05, !is.na(symbol), log2FoldChange < 0) %>% filter(!duplicated(symbol)) %>% .$symbol
+DFsignif$HyperAc_PW <- resultsPV %>% filter(padj < 0.05, !is.na(symbol), log2FoldChange > 0) %>% filter(!duplicated(symbol)) %>% .$symbol
+DFsignif$AllPDGenes_PW <- resultsPV %>% filter(PDgene == "Yes", !is.na(padj)) %>% filter(!duplicated(symbol)) %>% .$symbol
+DFsignif$SignifPDGenes_PW <- resultsPV %>% filter(padj < 0.05, PDgene == "Yes") %>% filter(!duplicated(symbol)) %>% .$symbol
+DFsignif$AllGenes_NBB <- resultsNBB %>% filter(!is.na(padj)) %>% filter(!duplicated(symbol), !is.na(symbol)) %>% .$symbol
+DFsignif$HypoAc_NBB <- resultsNBB %>% filter(padj < 0.05, !is.na(symbol), log2FoldChange < 0) %>% filter(!duplicated(symbol)) %>% .$symbol
+DFsignif$HyperAc_NBB <- resultsNBB %>% filter(padj < 0.05, !is.na(symbol), log2FoldChange > 0) %>% filter(!duplicated(symbol)) %>% .$symbol
+DFsignif$SignifPDGenes_NBB <- resultsNBB %>% filter(padj < 0.05, PDgene == "Yes") %>% filter(!duplicated(symbol)) %>% .$symbol
+DFsignif$AllPDGenes_NBB <- resultsNBB %>% filter(PDgene == "Yes", !is.na(padj)) %>% filter(!duplicated(symbol)) %>% .$symbol
+DFsignif$AllCommonGenes <- intersect(DFsignif$AllGenes_PW, DFsignif$AllGenes_NBB)
+DFsignif$AllCommonPDGenes <- intersect(DFsignif$AllPDGenes_PW, DFsignif$AllPDGenes_PW)
+
+group.venn(vectors=DFsignif[c("SignifPDGenes_PW", "SignifPDGenes_NBB")], label= T,
+           fill = c("blue", "red"),
+           cat.pos = c(-20, 15),
+           cat.dist = c(0.1,0.1),cat.cex = 1.2,
+           lab.cex=1,
+           file = paste0(ResultsPath, "VennDiagramSignifPDgenes"), ext = "pdf", height = 3, width = 4)
+
+#Venn digram overlap replicated hypoacetylated genes
+group.venn(vectors=DFsignif[c("HypoAc_PW", "HypoAc_NBB",  "AllCommonGenes")], label= F,
+           fill = c("darkgreen", "firebrick4", "white"),
+           cat.pos = c(-160, 0,  160),
+           cat.dist = c(0.01,0.01, 0.01),cat.cex = 1,
+           lab.cex=1,
+           file = paste0(ResultsPath, "VennDiagramReplicatedGenesDown"), ext = "pdf", height = 3, width = 4)
+
+#Venn digram overlap replicated hyperacetylated genes
+group.venn(vectors=DFsignif[c("HyperAc_PW", "HyperAc_NBB",  "AllCommonGenes")], label= F,
+           fill = c("darkgreen", "firebrick4", "white"),
+           cat.pos = c(-160, 160, 0),
+           cat.dist = c(0.01,0.01, 0.01),cat.cex = 1,
+           lab.cex=1,
+           file = paste0(ResultsPath, "VennDiagramReplicatedGenesUp"), ext = "pdf", height = 3, width = 4)
+
+group.venn(vectors=DFsignif[c("HyperAc_PW", "HyperAc_NBB",  "HypoAc_PW", "HypoAc_NBB")], label= F,
+           #fill = c("darkgreen", "firebrick4", "white"),
+           #cat.pos = c(-160, 160, 0),
+           #cat.dist = c(0.01,0.01, 0.01),cat.cex = 1,
+           lab.cex=1)
+
+group.venn(vectors=DFsignif[c("AllGenes_PW", "AllGenes_NBB")], label= F,
+           fill = c("blue", "red"),
+           cat.pos = c(-15, 10),
+           cat.dist = c(0.1,0.1),cat.cex = 1.2,
+           lab.cex=1)
+
+group.venn(vectors=DFsignif[c("AllPDGenes_PW", "AllPDGenes_NBB")], label= F,
+           fill = c("blue", "red"),
+           cat.pos = c(-20, 16),
+           cat.dist = c(0.1,0.1),cat.cex = 1.2,
+           lab.cex=1)
+
+DFcommonRegions <- list()
+DFcommonRegions$AllGenes_CommonPeaks <- CommonRegions %>% filter(!duplicated(symbol)) %>% .$symbol
+DFcommonRegions$MetaSignif_Genes <- CommonRegions %>% filter(AdjmetaP < 0.05) %>% filter(!duplicated(symbol)) %>% .$symbol
+DFcommonRegions$PD_Genes <- CommonRegions %>% filter(PDgene == "Yes") %>% filter(!duplicated(symbol)) %>% .$symbol
+DFcommonRegions$CommonPairs <- CommonRegions %>% filter(!duplicated(CommonPair)) %>% .$CommonPair
+DFcommonRegions$DAR_PW <- CommonRegions %>% filter(padj.PV < 0.05) %>% filter(!duplicated(CommonPair)) %>% .$CommonPair
+DFcommonRegions$DAR_NBB <- CommonRegions %>% filter(padj.NBB < 0.05) %>% filter(!duplicated(CommonPair)) %>% .$CommonPair  
+DFcommonRegions$Gene_PW <- CommonRegions %>% filter(CohorSignif < 0.05) %>% filter(!duplicated(symbol)) %>% .$CommonPair
+DFcommonRegions$Gene_NBB <- CommonRegions %>% filter(padj.NBB < 0.05) %>% filter(!duplicated(symbol)) %>% .$symbol  
+
+
+group.venn(vectors=DFcommonRegions[c("MetaSignif_Genes", "PD_Genes", "AllGenes_CommonPeaks")], label= F,
+           fill = c("darkgreen", "firebrick4", "white"),
+           cat.pos = c(-160, 0, 160),
+           cat.dist = c(0.01,0.01, 0.01),cat.cex = 1,
+           lab.cex=1,
+           file = paste0(ResultsPath, "VennDiagramMetaP_PDgenes"), ext = "pdf", height = 3, width = 4)
+
+group.venn(vectors=DFcommonRegions[c("DAR_PW", "DAR_NBB", "CommonPairs")], label= F,
+           fill = c("blue", "red", "white"),
+           cat.pos = c(-170, 0, 170),
+           cat.dist = c(0.01,0.01, 0.01),cat.cex = 1,
+           lab.cex=1,
+           file = paste0(ResultsPath, "VennDiagramReplicatedDARs"), ext = "pdf", height = 3, width = 4)
 
 #Add information which of the PD genes are significan
 PDgenes$AdjMetaP <- sapply(PDgenes$Gene, function(gene){
@@ -525,7 +626,7 @@ PDgenes$NBB_AdjPval <- sapply(PDgenes$Gene, function(gene){
   }
 }) %>% unlist
 
-write.table(PDgenes, "PDgeneStat.tsv", sep = "\t", row.names = F, col.names = T)
+write.table(PDgenes, paste0(ResultsPath, "PDgeneStat.tsv"), sep = "\t", row.names = F, col.names = T)
 
 CommonPeaksPDgenes <- CompareData$results %>% filter(CohorSignif == "Both", log2FoldChange.NBB*log2FoldChange.PV > 0) %>%
   filter(symbol %in% PDgenes$Gene) %>%
