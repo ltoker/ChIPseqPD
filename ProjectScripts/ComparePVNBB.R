@@ -946,33 +946,33 @@ ChIPrnaPV <- GetChIP_RNAcor(RNApeaks = RNApeaksPV, AdjCovar = AdjCovarPV,
 
 ChIPrnaPV$ChIP_expCor$FC <- resultsPV$log2FoldChange[match(ChIPrnaPV$ChIP_expCor$GeneSymbol, resultsPV$symbol)]
 
-ChIPrnaPV$ChIP_expCor %<>% mutate(Delta = CorCont - CorPD)
+ChIPrnaPV$ChIP_expCor %<>% mutate(Delta = CorPD - CorCont)
 
 
 ChIPrnaPV_RLE <- GetChIP_RNAcor(RNApeaks = RNApeaksPV, AdjCovar = AdjCovarPV,
                                 DESseqOut = PV_DESeq2RLE, Cohort = "PV", Name = "PV_RLE")
-ChIPrnaPV_RLE$ChIP_expCor %<>% mutate(Delta = CorCont - CorPD)
+ChIPrnaPV_RLE$ChIP_expCor %<>% mutate(Delta = CorPD - CorCont)
 
 
 ChIPrnaNBB <- GetChIP_RNAcor(RNApeaks = RNApeaksNBB, AdjCovar = AdjCovarNBB,
                              DESseqOut = NBB_DESeq2, Cohort = "NBB", Name = "NBB")
 
 ChIPrnaNBB$ChIP_expCor$FC <- resultsNBB$log2FoldChange[match(ChIPrnaNBB$ChIP_expCor$GeneSymbol, resultsNBB$symbol)]
-ChIPrnaNBB$ChIP_expCor %<>% mutate(Delta = CorCont - CorPD)
+ChIPrnaNBB$ChIP_expCor %<>% mutate(Delta = CorPD - CorCont)
 
 MergedChIPrna <- merge(ChIPrnaPV$ChIP_expCor, ChIPrnaNBB$ChIP_expCor, by = "GeneSymbol", suffixes = c(".PV", ".NBB")) %>% select(GeneSymbol, CorCont.PV, CorCont.NBB, CorPD.PV, CorPD.NBB, Delta.PV, Delta.NBB, FC.PV, FC.NBB)
 rownames(MergedChIPrna) <- MergedChIPrna$GeneSymbol
 
 ggplot(MergedChIPrna %>% filter(CorCont.PV > 0.5 & CorCont.NBB > 0.5), aes(Delta.PV, Delta.NBB)) +
   geom_point(alpha = 0.2) +
-  geom_label_repel(data = MergedChIPrna %>% filter(CorCont.PV > 0.5 & CorCont.NBB > 0.5) %>% filter(Delta.PV > 0.8 & Delta.NBB > 0.8),
+  geom_label_repel(data = MergedChIPrna %>% filter(CorCont.PV > 0.5 & CorCont.NBB > 0.5) %>% filter(Delta.PV < -0.8 & Delta.NBB < -0.8),
                    arrow = arrow(length = unit(0.01, "npc"), type = "closed", ends = "first"),
                    nudge_y = 0.3, nudge_x = 0.3, aes(label = GeneSymbol), show.legend = F)
 
 
 ChIPrnaNBB_RLE <- GetChIP_RNAcor(RNApeaks = RNApeaksNBB, AdjCovar = AdjCovarNBB,
                                 DESseqOut = NBB_DESeq2RLE, Cohort = "NBB", Name = "NBB_RLE")
-ChIPrnaNBB_RLE$ChIP_expCor %<>% mutate(Delta = CorCont - CorPD)
+ChIPrnaNBB_RLE$ChIP_expCor %<>% mutate(Delta = CorPD - CorCont)
 
 MergedChIPrnaRLE <- merge(ChIPrnaPV_RLE$ChIP_expCor, ChIPrnaNBB_RLE$ChIP_expCor, by = "GeneSymbol", suffixes = c(".PV", ".NBB")) %>% select(GeneSymbol, CorCont.PV, CorCont.NBB, CorPD.PV, CorPD.NBB, Delta.PV, Delta.NBB)
 rownames(MergedChIPrnaRLE) <- MergedChIPrna$GeneSymbol
