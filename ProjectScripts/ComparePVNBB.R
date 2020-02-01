@@ -208,12 +208,14 @@ CommonRegions$DirectionChange <- apply(CommonRegions %>% select(matches("log2"))
   }
 }) %>% factor(levels = c("Hypoacetylated", "Hyperacetylated", "Mixed"))
 
-Plot <- ggplot(CommonRegions, aes(log10(EffectiveLength), -log10(metaP))) +
+
+
+Plot <- ggplot(CommonRegions %>% filter(!duplicated(CommonPair)), aes(log10(EffectiveLength), -log10(metaP))) +
   theme_classic(14) +
   geom_point(alpha = 0.2, aes(color = PDgene), shape = 16) +
-  geom_point(data = CommonRegions %>% filter(PDgene == "Yes"),
+  geom_point(data = CommonRegions %>% filter(PDgene == "Yes") %>% filter(!duplicated(CommonPair)),
              aes(log10(EffectiveLength), -log10(metaP)), color = "goldenrod1") +
-  geom_point(data = CommonRegions %>% filter(CohorSignif != "NS", PDgene == "Yes"),
+  geom_point(data = CommonRegions %>% filter(CohorSignif != "NS", PDgene == "Yes") %>% filter(!duplicated(CommonPair)),
              aes(log10(EffectiveLength), -log10(metaP)), shape = 1, size = 2 , color = "red") +
   scale_color_manual(values = c("black", "goldenrod1"), name = "PDgene") +
   geom_hline(yintercept = -log10(MetaPThresh),
