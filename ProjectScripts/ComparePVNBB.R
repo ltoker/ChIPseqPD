@@ -964,6 +964,9 @@ ChIPrnaNBB$ChIP_expCor %<>% mutate(Delta = CorPD - CorCont)
 
 MergedChIPrna <- merge(ChIPrnaPV$ChIP_expCor, ChIPrnaNBB$ChIP_expCor, by = "GeneSymbol", suffixes = c(".PV", ".NBB")) %>% select(GeneSymbol, CorCont.PV, CorCont.NBB, CorPD.PV, CorPD.NBB, Delta.PV, Delta.NBB, FC.PV, FC.NBB)
 rownames(MergedChIPrna) <- MergedChIPrna$GeneSymbol
+MergedChIPrna <- merge(MergedChIPrna, PDgenes, by.x = "GeneSymbol", by.y = "Gene", all.x = T, sort =F)
+MergedChIPrna %<>% mutate(AdjmetaP = as.numeric(AdjMetaP))
+
 
 ggplot(MergedChIPrna %>% filter(CorCont.PV > 0.5 & CorCont.NBB > 0.5), aes(Delta.PV, Delta.NBB)) +
   geom_point(alpha = 0.2) +
