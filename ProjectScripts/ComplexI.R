@@ -1,8 +1,16 @@
+SampleMapping <- read.table("meta/RawMetata/SampleID_mapping.csv", sep = "\t", header = T, quote = "'", comment.char = "#")
+
 ComplexIdef <- read.table("data/complex_I_counts_NDUFS4_frontalcortex.csv", sep = "\t", header = T, quote = "'", comment.char = "#")
+FullMeta <- read.table("meta/FullMeta.txt", sep = "\t", header = T) %>% select(New.ID, Age.of.onset, Disease.duration, Brain.weight..gr.,
+                                                                               braak.tau, amyloid, braak.LB)
+FullMeta$activemotif_id <- SampleMapping$ChIPseq_id[match(FullMeta$New.ID, SampleMapping$Autopsy_id)]
 
 PWmeta <- PV_DESeq2@colData %>% data.frame()
+NBBmeta <- NBB_DESeq2@colData %>% data.frame()
 
-SampleMapping <- read.table("meta/RawMetata/SampleID_mapping.csv", sep = "\t", header = T, quote = "'", comment.char = "#")
+NBBmeta <- merge(NBBmeta, FullMeta, by ="activemotif_id")
+PWmeta <- merge(PWmeta, FullMeta, by ="activemotif_id")
+
 ComplexIdef$activemotif_id <- SampleMapping$ChIPseq_id[match(ComplexIdef$ID, SampleMapping$Autopsy_id)]
 
 PWmeta$ComplexIintact <- ComplexIdef$X..Positive[match(PWmeta$activemotif_id, ComplexIdef$activemotif_id)]
