@@ -855,7 +855,8 @@ GetChIP_RNAcor <- function(RNApeaks, DESseqOut, AdjCovar, Cohort = "PV", Name){
     strsplit(x, "_")[[1]][3]
   })
   
-  AdjustedPromoterPeak %<>% filter(!duplicated(PeakGene)) %>% .[!grepl("^MIR|^SN", .$GeneSymbol),]
+  #Remove duplicates and genes annotated to miRNAs/snRNAs
+  AdjustedPromoterPeak %<>% filter(!duplicated(PeakGene)) %>% .[!.$GeneSymbol %in% symbolToFilter,]
   
   AdjustedPromoterPeak_Melt <- gather(AdjustedPromoterPeak, key = "SubjectID", value = AdjPromoter, -PeakName, -PeakGene, -GeneSymbol)
   AdjustedPromoterPeak_Melt$RNAid <- Metadata$sample_id_rna[match(AdjustedPromoterPeak_Melt$SubjectID, Metadata$subjectID)]
