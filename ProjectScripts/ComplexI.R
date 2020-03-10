@@ -4,6 +4,9 @@ ComplexIdef <- read.table("data/complex_I_counts_NDUFS4_frontalcortex.csv", sep 
 FullMeta <- read.table("meta/FullMeta.txt", sep = "\t", header = T) %>% select(New.ID, Age.of.onset, Disease.duration, Brain.weight..gr.,
                                                                                braak.tau, amyloid, braak.LB)
 FullMeta$activemotif_id <- SampleMapping$ChIPseq_id[match(FullMeta$New.ID, SampleMapping$Autopsy_id)]
+FullMeta$RNAseqID <- SampleMapping$RNAseq_id[match(FullMeta$New.ID, SampleMapping$Autopsy_id)]
+
+
 
 PWmeta <- PV_DESeq2@colData %>% data.frame()
 NBBmeta <- NBB_DESeq2@colData %>% data.frame()
@@ -14,6 +17,7 @@ PWmeta <- merge(PWmeta, FullMeta, by ="activemotif_id")
 ComplexIdef$activemotif_id <- SampleMapping$ChIPseq_id[match(ComplexIdef$ID, SampleMapping$Autopsy_id)]
 
 PWmeta$ComplexIintact <- ComplexIdef$X..Positive[match(PWmeta$activemotif_id, ComplexIdef$activemotif_id)]
+PWmeta$ComplexIdef <- ComplexIdef$X..Deficient[match(PWmeta$activemotif_id, ComplexIdef$activemotif_id)]
 PWmeta$Autopsy_ID <- ComplexIdef$ID[match(PWmeta$activemotif_id, ComplexIdef$activemotif_id)]
 
 
@@ -33,7 +37,7 @@ ggplot(DataWesternMeanMelt, aes(X..Positive, NormalizedIntensity)) +
   facet_wrap(~Protein, scales = "free_y")
 
 
-ggplot(PWmeta, aes(ComplexIdef, c(RiP_NormMeanRatioOrg/Oligo_MSP))) + geom_point(aes(color = condition)) + geom_smooth(method = "lm")
+ggplot(PWmeta, aes(ComplexIdef, RiP_NormMeanRatioOrg)) + geom_point(aes(color = condition))# + geom_smooth(method = "lm")
 ggplot(PWmeta, aes(ComplexIintact, RiP_NormMeanRatioOrg/Oligo_MSP)) + geom_point(aes(color = condition)) + geom_smooth(method = "lm")
 write.table(PWmeta, "PWmetaComplexI.tsv", sep = "\t", row.names = F, col.names = T)
 
