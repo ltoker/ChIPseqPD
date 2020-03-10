@@ -22,17 +22,15 @@ MergedChIPrnaMelt$Group <-  sapply(MergedChIPrnaMelt$Group, function(x){
 
 MergedChIPrnaMelt$Cohort <- factor(MergedChIPrnaMelt$Cohort, levels = c("PV", "NBB"))
 
-<<<<<<< HEAD
 ggplot(MergedChIPrnaMelt %>% filter(GeneSymbol %in% GeneMembersPV$`mitochondrial respiratory chain complex I assembly`), aes(Group, Cor)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
   labs(title = "mitochondrial respiratory chain complex I assembly", x = "") +
-=======
-ggplot(MergedChIPrnaMelt %>% filter(GeneSymbol %in% GeneMembersPV$`fatty acid beta-oxidation`), aes(Group, Cor, color = Group)) +
+
+  ggplot(MergedChIPrnaMelt %>% filter(GeneSymbol %in% GeneMembersPV$`fatty acid beta-oxidation`), aes(Group, Cor, color = Group)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
   labs(title = "fatty acid beta-oxidation", x = "") +
->>>>>>> f5d82f5ab6c941f45312d04fa1fd8bacfcfbef27
   geom_violin() +
   geom_boxplot(outlier.shape = NA, width = 0.2) +
   geom_jitter(width = 0.2, alpha = 0.4)+
