@@ -105,13 +105,13 @@ temp <- mergeByOverlaps(SequencedDeep, SignifMetaRegions) %>%
 write.table(temp, "DeepSequencedSignifMetaP.tsv", row.names = F, col.names = T, sep = "\t")
 
 #Look at p300 and HDAC binding sites
-PVnarrowPeak <- read.table("data/Peaks/PV_ALL_RNA.narrowPeakClean", header = F, sep = "\t")
+PVnarrowPeak <- read.table("data/Peaks/PV_ALL_RNA.narrowPeakClean.gz", header = F, sep = "\t")
 names(PVnarrowPeak)[1:5] <- c("CHR", "START", "END", "PeakName", "Score")
 PVnarrowPeak <- PVnarrowPeak[!grepl("GL|hs",PVnarrowPeak$CHR),]
 PVnarrowPeak %<>%  mutate(CHR = paste0("chr", CHR))
 PVnarrowPeak$DApvalue <- resultsPV$pvalue[match(PVnarrowPeak$PeakName, resultsPV$PeakName)]
 
-NBBnarrowPeak <- read.table("data/Peaks/NBB_ALL.narrowPeakClean", header = F, sep = "\t")
+NBBnarrowPeak <- read.table("data/Peaks/NBB_ALL.narrowPeakClean.gz", header = F, sep = "\t")
 names(NBBnarrowPeak)[1:5] <- c("CHR", "START", "END", "PeakName", "Score")
 NBBnarrowPeak <- NBBnarrowPeak[!grepl("GL|hs",NBBnarrowPeak$CHR),]
 NBBnarrowPeak %<>%  mutate(CHR = paste0("chr", CHR))
@@ -188,9 +188,14 @@ names(resultsNBB) <- sapply(names(resultsNBB), function(x) gsub(".NBB", "", x))
 resultsNBB %<>% mutate(HDAC_Binding = HDAC1 + HDAC2 + HDAC6 + HDAC8 + SIRT6,
                        EP300_DeltaBinding = EP300 - HDAC_Binding,
                        EP300_PropBinding = EP300/(HDAC_Binding + 0.1),
-                       pPvalue = -log10(pvalue),
-                       pPvalue2 = pPvalue)
-resultsNBB$pPvalue2[resultsNBB$DirectionChange == "Hypoacetylated"] <- -1*resultsNBB$pPvalue2[resultsNBB$DirectionChange == "Hypoacetylated"]
+                       pPvalue = -log10(pvalue))
+
+resultsNBB$pPvalue2[resultsNBB$DirectionChange == "Hypoacetylated"] <- 1-resultsNBB$pvalue[resultsNBB$DirectionChange == "Hypoacetylated"]/2
+resultsNBB$pPvalue2[resultsNBB$DirectionChange == "Hyperacetylated"] <- resultsNBB$pvalue[resultsNBB$DirectionChange == "Hyperacetylated"]/2
+resultsNBB %<>% mutate(pPvalue2 = -log10(pPvalue2))
+
+resultsNBB <- merge(resultsNBB, NBBnarrowPeak %>% filter(!duplicated(PeakName.NBB)) %>% select(-symbol), by.x = "PeakName", by.y = "PeakName.NBB", all.x = T, sort = F)
+resultsNBB %<>% mutate(HDAC_Binding.NBB = HDAC1.NBB + HDAC2.NBB + HDAC6.NBB + HDAC8.NBB + SIRT6.NBB)
 
 
 resultsPV <- merge(resultsPV, PVnarrowPeakByGene, by = "symbol", all.x = T, sort = F)
@@ -199,17 +204,36 @@ names(resultsPV) <- sapply(names(resultsPV), function(x) gsub(".PV", "", x))
 resultsPV %<>% mutate(HDAC_Binding = HDAC1 + HDAC2 + HDAC6 + HDAC8 + SIRT6,
                       EP300_DeltaBinding = EP300 - HDAC_Binding,
                       EP300_PropBinding = EP300/(HDAC_Binding + 0.1),
-                      pPvalue = -log10(pvalue),
-                      pPvalue2 = pPvalue)
+                      pPvalue = -log10(pvalue))
                        
-resultsPV$pPvalue2[resultsPV$DirectionChange == "Hypoacetylated"] <- -1*resultsPV$pPvalue2[resultsPV$DirectionChange == "Hypoacetylated"]
+resultsPV$pPvalue2[resultsPV$DirectionChange == "Hypoacetylated"] <- 1-resultsPV$pvalue[resultsPV$DirectionChange == "Hypoacetylated"]/2
+resultsPV$pPvalue2[resultsPV$DirectionChange == "Hyperacetylated"] <- resultsPV$pvalue[resultsPV$DirectionChange == "Hyperacetylated"]/2
+resultsPV %<>% mutate(pPvalue2 = -log10(pPvalue2))
 
-lm(pPvalue2 ~ EP300 + HDAC_Binding + PDgene + PeakNum + log10(EffectiveLength),
-   data = resultsPV %>% arrange(pvalue) %>% filter(!duplicated(symbol))) %>% summary
+resultsPV <- merge(resultsPV, PVnarrowPeak %>% filter(!duplicated(PeakName.PV)) %>% select(-symbol), by.x = "PeakName", by.y = "PeakName.PV", all.x = T, sort = F)
+resultsPV %<>% mutate(HDAC_Binding.PV = HDAC1.PV + HDAC2.PV + HDAC6.PV + HDAC8.PV + SIRT6.PV)
 
-lm(pPvalue2 ~ EP300 + HDAC_Binding + PDgene,
+lm(pPvalue2 ~ EP300 + HDAC1 + HDAC2 + HDAC6 + HDAC8 + SIRT6  + PDgene,
+   data = resultsPV) %>% summary
+
+lm(pPvalue2 ~ EP300.PV + HDAC1.PV + HDAC2.PV + HDAC6.PV + HDAC8.PV + SIRT6.PV  + PDgene,
+   data = resultsPV  %>% filter(!duplicated(PeakName))) %>% summary
+
+lm(pPvalue2 ~ EP300.PV + HDAC_Binding.PV  + PDgene,
+   data = resultsPV  %>% filter(!duplicated(PeakName))) %>% summary
+
+lm(pPvalue2 ~ EP300 + HDAC1 + HDAC2 + HDAC6 + HDAC8 + SIRT6  + PDgene,
    data = resultsNBB) %>% summary
 
+lm(pPvalue2 ~ EP300.NBB + HDAC1.NBB + HDAC2.NBB + HDAC6.NBB + HDAC8.NBB + SIRT6.NBB  + PDgene,
+   data = resultsNBB  %>% filter(!duplicated(PeakName))) %>% summary
 
+lm(pPvalue2 ~ EP300.NBB + HDAC_Binding.NBB  + PDgene,
+   data = resultsNBB  %>% filter(!duplicated(PeakName))) %>% summary
+
+
+lm(-log10(metaP) ~ EP300.NBB_Region + HDAC1.NBB_Region + HDAC2.NBB_Region + HDAC6.NBB_Region + HDAC8.NBB_Region + SIRT6.NBB_Region  + PDgene +
+   EP300.PV_Region + HDAC1.PV_Region + HDAC2.PV_Region + HDAC6.PV_Region + HDAC8.PV_Region + SIRT6.PV_Region + log10(RegionLength),
+   data = CommonRegions %>% filter(DirectionChange == "Hypoacetylated", RegionLength > 0)) %>% summary
 
 
