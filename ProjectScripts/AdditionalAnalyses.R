@@ -1,9 +1,21 @@
+packageF("ggpubr")
+
+
 install_github("https://github.com/PavlidisLab/ermineR")
 library(ermineR)
 HumanAnno <- fread('https://gemma.msl.ubc.ca/annots/Generic_human_noParents.an.txt.gz', header = T) %>% data.frame()
-
 PVenrich <- gsr(scores = MergedChIPrna, scoreColumn = "Delta.PV", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = F, logTrans = F)
 NBBenrich <- gsr(scores = MergedChIPrna, scoreColumn = "Delta.NBB", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = F, logTrans = F)
+
+write.table(PVenrich$results %>% data.frame()
+            %>% select(-GeneMembers, -Same.as, -ID, -NumProbes, -RawScore, -Multifunctionality) %>%
+              arrange(Pval) %>% filter(CorrectedPvalue < 0.05),
+            "GeneralResults/EnrichDeltaPV.tsv", row.names = F, col.names = T, sep = "\t")
+
+write.table(NBBenrich$results %>% data.frame()
+            %>% select(-GeneMembers, -Same.as, -ID, -NumProbes, -RawScore, -Multifunctionality) %>%
+              arrange(Pval) %>% filter(CorrectedPvalue < 0.05),
+            "GeneralResults/EnrichDeltaNBB.tsv", row.names = F, col.names = T, sep = "\t")
 
 GeneMembersPV <- PVenrich$results %>% data.frame() %>% filter(CorrectedPvalue < 0.05) %>% arrange(CorrectedMFPvalue) %>% .$GeneMembers %>% strsplit(.,"\\|")
 names(GeneMembersPV) <- PVenrich$results %>% data.frame() %>% filter(CorrectedPvalue < 0.05) %>% arrange(CorrectedMFPvalue) %>% .$Name
@@ -22,50 +34,43 @@ MergedChIPrnaMelt$Group <-  sapply(MergedChIPrnaMelt$Group, function(x){
 
 MergedChIPrnaMelt$Cohort <- factor(MergedChIPrnaMelt$Cohort, levels = c("PV", "NBB"))
 
-ggplot(MergedChIPrnaMelt %>% filter(GeneSymbol %in% GeneMembersPV$`mitochondrial respiratory chain complex I assembly`), aes(Group, Cor)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) +
-  labs(title = "mitochondrial respiratory chain complex I assembly", x = "") +
-
-  ggplot(MergedChIPrnaMelt %>% filter(GeneSymbol %in% GeneMembersPV$`fatty acid beta-oxidation`), aes(Group, Cor, color = Group)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) +
+p1 <- ggplot(MergedChIPrnaMelt %>% filter(GeneSymbol %in% GeneMembersPV$`fatty acid beta-oxidation`), aes(Group, Cor, color = Group)) +
+  theme_minimal() +
   labs(title = "fatty acid beta-oxidation", x = "") +
-  geom_violin() +
-  geom_boxplot(outlier.shape = NA, width = 0.2) +
-  geom_jitter(width = 0.2, alpha = 0.4)+
+  geom_violin(show.legend = F) +
+  geom_boxplot(outlier.shape = NA, width = 0.3,aes(fill = Group), alpha = 0.4, show.legend = F) +
+  geom_jitter(width = 0.2, alpha = 0.8, show.legend = F)+
   geom_hline(yintercept = 0, color = "red") +
   scale_color_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
-  facet_wrap(~Cohort, scales = "free")
+  scale_fill_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
+  facet_wrap(~Cohort)
 
-
-ggplot(MergedChIPrnaMelt %>% filter(GeneSymbol %in% GeneMembersPV$`mitochondrial respiratory chain complex I assembly`), aes(Group, Cor, color = Group)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) +
+p2 <- ggplot(MergedChIPrnaMelt %>% filter(GeneSymbol %in% GeneMembersPV$`mitochondrial respiratory chain complex I assembly`), aes(Group, Cor, color = Group)) +
+  theme_minimal() +
   labs(title = "mitochondrial respiratory chain complex I assembly", x = "") +
-  geom_violin() +
-  geom_boxplot(outlier.shape = NA, width = 0.2) +
-  geom_jitter(width = 0.2, alpha = 0.4)+
+  geom_violin(show.legend = F) +
+  geom_boxplot(outlier.shape = NA, width = 0.3,aes(fill = Group), alpha = 0.4, show.legend = F) +
+  geom_jitter(width = 0.2, alpha = 0.8, show.legend = F)+
   geom_hline(yintercept = 0, color = "red") +
   scale_color_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
-  facet_wrap(~Cohort, scales = "free")
+  scale_fill_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
+  facet_wrap(~Cohort)
 
-ggplot(MergedChIPrnaMelt %>% filter(GeneSymbol %in% GeneMembersNBB$`organellar large ribosomal subunit`), aes(Group, Cor, color = Group)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) +
-  labs(title = "organellar large ribosomal subunit", x = "") +
-  geom_violin() +
-  geom_boxplot(outlier.shape = NA, width = 0.2) +
-  geom_jitter(width = 0.2, alpha = 0.4)+
+
+p3 <- ggplot(MergedChIPrnaMelt %>% filter(GeneSymbol %in% GeneMembersNBB$`mitochondrial large ribosomal subunit`), aes(Group, Cor, color = Group)) +
+  theme_minimal() +
+  labs(title = "mitochondrial large ribosomal subunit", x = "") +
+  geom_violin(show.legend = F) +
+  geom_boxplot(outlier.shape = NA, width = 0.3,aes(fill = Group), alpha = 0.4, show.legend = F) +
+  geom_jitter(width = 0.2, alpha = 0.8, show.legend = F)+
   geom_hline(yintercept = 0, color = "red") +
   scale_color_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
-  facet_wrap(~Cohort, scales = "free")
+  scale_fill_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
+  facet_wrap(~Cohort)
 
-
-PVenrichCont <- ora(threshold = 0.8, scores = MergedChIPrna, scoreColumn = "CorCont.PV", aspects = c("M", "B"), annotation = HumanAnno, bigIsBetter = T, logTrans = F)
-NBBenrichCont <- ora(threshold = 0.8, scores = MergedChIPrna, scoreColumn = "CorCont.NBB", aspects = c("M", "B"), annotation = HumanAnno, bigIsBetter = T, logTrans = F)
-
-
+ggarrange(p2,p1,p3, nrow = 1)
+ggsave(paste0("MitoGenesCor.pdf"), device = "pdf", width = 10, height = 2, dpi = 300, useDingbats = F, path = ResultsPath)
+closeDev()
 
 PVenrichRLE <- gsr(scores = MergedChIPrnaRLE, scoreColumn = "Delta.PV", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = T, logTrans = F)
 NBBenrichRLE <- gsr(scores = MergedChIPrnaRLE, scoreColumn = "Delta.NBB", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = T, logTrans = F)
@@ -74,8 +79,19 @@ NBBenrichRLE <- gsr(scores = MergedChIPrnaRLE, scoreColumn = "Delta.NBB", aspect
 
 
 
-PVenrichDown <- gsr(scores = MergedChIPrna, scoreColumn = "Delta.PV", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = F, logTrans = F)
-NBBenrichDown <- gsr(scores = MergedChIPrna, scoreColumn = "Delta.NBB", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = F, logTrans = F)
+PVenrichPDdown <- gsr(scores = MergedChIPrna, scoreColumn = "CorPD.PV", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = F, logTrans = F)
+NBBenrichPDdown <- gsr(scores = MergedChIPrna, scoreColumn = "CorPD.NBB", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = F, logTrans = F)
+
+write.table(PVenrichPDdown$results %>% data.frame()
+            %>% select(-GeneMembers, -Same.as, -ID, -NumProbes, -RawScore, -Multifunctionality) %>%
+              arrange(Pval) %>% filter(CorrectedPvalue < 0.05),
+            "GeneralResults/PVenrichPDdown.tsv", row.names = F, col.names = T, sep = "\t")
+
+write.table(NBBenrichPDdown$results %>% data.frame()
+            %>% select(-GeneMembers, -Same.as, -ID, -NumProbes, -RawScore, -Multifunctionality) %>%
+              arrange(Pval) %>% filter(CorrectedPvalue < 0.05),
+            "GeneralResults/NBBenrichPDdown.tsv", row.names = F, col.names = T, sep = "\t")
+
 
 SequencedDeep <- read.table("15794-1446155273_Covered.bed", header = F, sep= "\t", skip = 2)
 names(SequencedDeep) <- c("CHR", "START", "END", "GeneSymbol")
@@ -184,10 +200,10 @@ CommonRegions <- merge(CommonRegions, NBBnarrowPeakByGene, by = "symbol", all.x 
 CommonRegions <- merge(CommonRegions, PVnarrowPeakByGene, by = "symbol", all.x = T, sort = F, suffixes = c("_Region", "_Gene"))
 
 resultsNBB <- merge(resultsNBB, NBBnarrowPeakByGene, by = "symbol", all.x = T, sort = F)
-names(resultsNBB) <- sapply(names(resultsNBB), function(x) gsub(".NBB", "", x))
-resultsNBB %<>% mutate(HDAC_Binding = HDAC1 + HDAC2 + HDAC6 + HDAC8 + SIRT6,
-                       EP300_DeltaBinding = EP300 - HDAC_Binding,
-                       EP300_PropBinding = EP300/(HDAC_Binding + 0.1),
+names(resultsNBB) <- sapply(names(resultsNBB), function(x) gsub(".NBB", "_Gene", x))
+
+resultsNBB %<>% mutate(HDAC_Binding_Gene = HDAC1_Gene + HDAC2_Gene + HDAC6_Gene + HDAC8_Gene + SIRT6_Gene,
+                       EP300_DeltaBinding_Gene = EP300_Gene - HDAC_Binding_Gene,
                        pPvalue = -log10(pvalue))
 
 resultsNBB$pPvalue2[resultsNBB$DirectionChange == "Hypoacetylated"] <- 1-resultsNBB$pvalue[resultsNBB$DirectionChange == "Hypoacetylated"]/2
@@ -196,14 +212,14 @@ resultsNBB %<>% mutate(pPvalue2 = -log10(pPvalue2))
 
 resultsNBB <- merge(resultsNBB, NBBnarrowPeak %>% filter(!duplicated(PeakName.NBB)) %>% select(-symbol), by.x = "PeakName", by.y = "PeakName.NBB", all.x = T, sort = F)
 resultsNBB %<>% mutate(HDAC_Binding.NBB = HDAC1.NBB + HDAC2.NBB + HDAC6.NBB + HDAC8.NBB + SIRT6.NBB)
+names(resultsNBB) <- sapply(names(resultsNBB), function(x) gsub(".NBB", "_Peak", x))
 
 
 resultsPV <- merge(resultsPV, PVnarrowPeakByGene, by = "symbol", all.x = T, sort = F)
-names(resultsPV) <- sapply(names(resultsPV), function(x) gsub(".PV", "", x))
+names(resultsPV) <- sapply(names(resultsPV), function(x) gsub(".PV", "_Gene", x))
 
-resultsPV %<>% mutate(HDAC_Binding = HDAC1 + HDAC2 + HDAC6 + HDAC8 + SIRT6,
-                      EP300_DeltaBinding = EP300 - HDAC_Binding,
-                      EP300_PropBinding = EP300/(HDAC_Binding + 0.1),
+resultsPV %<>% mutate(HDAC_Binding_Gene = HDAC1_Gene + HDAC2_Gene + HDAC6_Gene + HDAC8_Gene + SIRT6_Gene,
+                      EP300_DeltaBinding_Gene = EP300_Gene - HDAC_Binding_Gene,
                       pPvalue = -log10(pvalue))
                        
 resultsPV$pPvalue2[resultsPV$DirectionChange == "Hypoacetylated"] <- 1-resultsPV$pvalue[resultsPV$DirectionChange == "Hypoacetylated"]/2
@@ -212,28 +228,153 @@ resultsPV %<>% mutate(pPvalue2 = -log10(pPvalue2))
 
 resultsPV <- merge(resultsPV, PVnarrowPeak %>% filter(!duplicated(PeakName.PV)) %>% select(-symbol), by.x = "PeakName", by.y = "PeakName.PV", all.x = T, sort = F)
 resultsPV %<>% mutate(HDAC_Binding.PV = HDAC1.PV + HDAC2.PV + HDAC6.PV + HDAC8.PV + SIRT6.PV)
+names(resultsPV) <- sapply(names(resultsPV), function(x) gsub(".PV", "_Peak", x))
 
-lm(pPvalue2 ~ EP300 + HDAC1 + HDAC2 + HDAC6 + HDAC8 + SIRT6  + PDgene,
+
+#Gene level
+lm(pPvalue2 ~ EP300_Gene + HDAC1_Gene + HDAC2_Gene + HDAC6_Gene + HDAC8_Gene + SIRT6_Gene  + PDgene,
    data = resultsPV) %>% summary
 
-lm(pPvalue2 ~ EP300.PV + HDAC1.PV + HDAC2.PV + HDAC6.PV + HDAC8.PV + SIRT6.PV  + PDgene,
-   data = resultsPV  %>% filter(!duplicated(PeakName))) %>% summary
+lm(pPvalue2 ~ EP300_Gene + HDAC_Binding_Gene  + PDgene,
+   data = resultsPV) %>% summary %>% .$coef %>%
+  write.table(paste0(ResultsPath,"LmTFPV_Gene.tsv"), row.names = T, col.names = T, sep = "\t")
 
-lm(pPvalue2 ~ EP300.PV + HDAC_Binding.PV  + PDgene,
-   data = resultsPV  %>% filter(!duplicated(PeakName))) %>% summary
-
-lm(pPvalue2 ~ EP300 + HDAC1 + HDAC2 + HDAC6 + HDAC8 + SIRT6  + PDgene,
+lm(pPvalue2 ~ EP300_Gene + HDAC1_Gene + HDAC2_Gene + HDAC6_Gene + HDAC8_Gene + SIRT6_Gene  + PDgene,
    data = resultsNBB) %>% summary
 
-lm(pPvalue2 ~ EP300.NBB + HDAC1.NBB + HDAC2.NBB + HDAC6.NBB + HDAC8.NBB + SIRT6.NBB  + PDgene,
-   data = resultsNBB  %>% filter(!duplicated(PeakName))) %>% summary
+lm(pPvalue2 ~ EP300_Gene + HDAC_Binding_Gene  + PDgene,
+   data = resultsNBB) %>% summary %>% .$coef %>%
+  write.table(paste0(ResultsPath,"LmTFNBB_Gene.tsv"), row.names = T, col.names = T, sep = "\t")
 
-lm(pPvalue2 ~ EP300.NBB + HDAC_Binding.NBB  + PDgene,
-   data = resultsNBB  %>% filter(!duplicated(PeakName))) %>% summary
+#Peak level
+lm(pPvalue2 ~ EP300_Peak + HDAC1_Peak + HDAC2_Peak + HDAC6_Peak + HDAC8_Peak + PDgene,
+   data = resultsPV %>% filter(!duplicated(Peak_Gene))) %>% summary
+
+lm(pPvalue2 ~ EP300_Peak + HDAC_Binding_Peak  + PDgene,
+   data = resultsPV %>% filter(!duplicated(Peak_Gene))) %>% summary %>% .$coef %>%
+  write.table(paste0(ResultsPath,"LmTFPV_Peak.tsv"), row.names = T, col.names = T, sep = "\t")
+
+lm(pPvalue2 ~ EP300_Peak + HDAC1_Peak + HDAC2_Peak + HDAC6_Peak + HDAC8_Peak + PDgene,
+   data = resultsNBB %>% filter(!duplicated(Peak_Gene))) %>% summary 
+
+lm(pPvalue2 ~ EP300_Peak + HDAC_Binding_Peak  + PDgene,
+   data = resultsNBB %>% filter(!duplicated(Peak_Gene))) %>% summary %>% .$coef %>%
+  write.table(paste0(ResultsPath,"LmTFNBB_Peak.tsv"), row.names = T, col.names = T, sep = "\t")
 
 
-lm(-log10(metaP) ~ EP300.NBB_Region + HDAC1.NBB_Region + HDAC2.NBB_Region + HDAC6.NBB_Region + HDAC8.NBB_Region + SIRT6.NBB_Region  + PDgene +
-   EP300.PV_Region + HDAC1.PV_Region + HDAC2.PV_Region + HDAC6.PV_Region + HDAC8.PV_Region + SIRT6.PV_Region + log10(RegionLength),
-   data = CommonRegions %>% filter(DirectionChange == "Hypoacetylated", RegionLength > 0)) %>% summary
+
+PDgeneSignif <- PDgenes %>% filter(AdjMetaP < 0.05) %>% .$Gene %>% as.character()
+PDgeneSignif <- PDgenes %>% filter(AdjMetaP < 0.05) %>% .$Gene %>% as.character()
+
+resultsPV$MetaSignif <- "No"
+resultsPV$MetaSignif[resultsPV$PeakName %in% (CommonRegions %>% filter(AdjmetaP < 0.05) %>% .$PeakName.PV)] <- "Yes"
+resultsPV$MetaSignif[!resultsPV$PeakName %in% CommonRegions$PeakName.PV] <- NA
+
+
+resultsNBB$MetaSignif <- "No"
+resultsNBB$MetaSignif[resultsNBB$PeakName %in% (CommonRegions %>% filter(AdjmetaP < 0.05) %>% .$PeakName.NBB)] <- "Yes"
+resultsNBB$MetaSignif[!resultsNBB$PeakName %in% CommonRegions$PeakName.NBB] <- NA
+
+
+HDACdataPlotData <- rbind(resultsPV %>% filter(!duplicated(Peak_Gene)) %>%
+                            select(pPvalue2, padj, PDgene, EP300_Peak, HDAC_Binding_Peak, MetaSignif) %>%
+                            mutate(Cohort = "PW"),
+                          resultsNBB %>% filter(!duplicated(Peak_Gene)) %>%
+                            select(pPvalue2, padj, PDgene, EP300_Peak, HDAC_Binding_Peak, MetaSignif) %>%
+                            mutate(Cohort = "NBB"))
+
+HDACdataPlotData$CohortSignif <- sapply(HDACdataPlotData$padj, function(x){
+  if(is.na(x)){
+    NA
+  } else if(x<0.05){
+    "Yes"
+  } else {
+    "No"
+  }
+})
+
+
+KSstatNBB <- ks.test(HDACdataPlotData %>% filter(CohortSignif == "No", Cohort == "NBB") %>% 
+                       filter(EP300_Peak > 0 & HDAC_Binding_Peak > 0) %>% mutate(Val = log((EP300_Peak+0.01)/log(HDAC_Binding_Peak + 0.01))) %>% .$Val,
+                     HDACdataPlotData %>% filter(CohortSignif == "Yes", Cohort == "NBB") %>% 
+                       filter(EP300_Peak > 0 & HDAC_Binding_Peak > 0) %>% mutate(Val = log((EP300_Peak+0.01)/log(HDAC_Binding_Peak + 0.01))) %>% .$Val)
+
+KSstatPV <- ks.test(HDACdataPlotData %>% filter(CohortSignif == "No", Cohort == "PW") %>% 
+                      filter(EP300_Peak > 0 & HDAC_Binding_Peak > 0) %>% mutate(Val = log((EP300_Peak+0.01)/log(HDAC_Binding_Peak + 0.01))) %>% .$Val,
+                    HDACdataPlotData %>% filter(CohortSignif == "Yes", Cohort == "PW") %>% 
+                      filter(EP300_Peak > 0 & HDAC_Binding_Peak > 0) %>% mutate(Val = log((EP300_Peak+0.01)/log(HDAC_Binding_Peak + 0.01))) %>% .$Val)
+
+KSdf <- data.frame(Cohort = c("NBB", "PW"),
+                   Text = c(paste0("D = ", round(KSstatNBB$statistic, digits = 2), ", p = ", signif(KSstatNBB$p.value, digits = 2)),
+                            paste0("D = ", round(KSstatPV$statistic, digits = 2), ", p = ", signif(KSstatPV$p.value, digits = 2))),
+                   x = 0, y = 2.55)
+
+ggplot(HDACdataPlotData %>% filter(!is.na(CohortSignif)) %>% 
+         filter(EP300_Peak > 0 & HDAC_Binding_Peak > 0),
+       aes(log((EP300_Peak + 0.01)/(HDAC_Binding_Peak+0.01)), fill = CohortSignif)) +
+  theme_minimal(base_size = 14) +
+  labs(x = "log(p300_binding/HDAC_binding)", title = "All Genes") +
+  scale_fill_manual(values = c("grey", "darkred")) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~Cohort) +
+  geom_text(data = KSdf, aes(x, y, label = Text), inherit.aes = F, size = 4)
+ggsave(paste0("KStest.pdf"), device = "pdf", width = 10, height = 5, dpi = 300, useDingbats = F, path = ResultsPath)
+closeDev()
+
+
+WilcoxNBBCohort <- wilcox.test(log((EP300_Peak+0.01)/log(HDAC_Binding_Peak + 0.01))~CohortSignif,
+                             data = HDACdataPlotData %>% filter(!is.na(CohortSignif), Cohort == "NBB", PDgene == "Yes") %>%
+                               filter(EP300_Peak > 0 & HDAC_Binding_Peak > 0))
+WilcoxPVCohort <- wilcox.test(log((EP300_Peak+0.01)/log(HDAC_Binding_Peak + 0.01))~CohortSignif,
+                               data = HDACdataPlotData %>% filter(!is.na(CohortSignif), Cohort == "PW", PDgene == "Yes") %>%
+                                 filter(EP300_Peak > 0 & HDAC_Binding_Peak > 0))
+WilcoxCohortdf <- data.frame(Cohort = c("NBB", "PW"),
+                             Text = c(paste0("p = ", signif(WilcoxNBBCohort$p.value, digits = 2)),
+                                      paste0("p = ", signif(WilcoxPVCohort$p.value, digits = 2))),
+                             x = c(1,2), y = 2.1)
+
+
+WilcoxNBBMeta <- wilcox.test(log((EP300_Peak+0.01)/log(HDAC_Binding_Peak + 0.01))~MetaSignif,
+                               data = HDACdataPlotData %>% filter(!is.na(MetaSignif), Cohort == "NBB", PDgene == "Yes") %>%
+                                 filter(EP300_Peak > 0 & HDAC_Binding_Peak > 0))
+WilcoxPVMeta <- wilcox.test(log((EP300_Peak+0.01)/log(HDAC_Binding_Peak + 0.01))~MetaSignif,
+                              data = HDACdataPlotData %>% filter(!is.na(MetaSignif), Cohort == "PW", PDgene == "Yes") %>%
+                                filter(EP300_Peak > 0 & HDAC_Binding_Peak > 0))
+
+WilcoxMetadf <- data.frame(Cohort = c("NBB", "PW"),
+                             Text = c(paste0("p = ", signif(WilcoxNBBMeta$p.value, digits = 2)),
+                                      paste0("p = ", signif(WilcoxPVMeta$p.value, digits = 2))),
+                             x = c(1,2), y = 2.1)
+
+
+
+ggplot(HDACdataPlotData %>% filter(!is.na(MetaSignif), PDgene == "Yes") %>% 
+         filter(EP300_Peak > 0 & HDAC_Binding_Peak > 0),
+       aes(Cohort, log(EP300_Peak + 0.01)-log(HDAC_Binding_Peak+0.01),fill = MetaSignif, color = MetaSignif)) +
+  theme_minimal() +
+  labs(y = "log(p300_binding/HDAC_binding)", x = "") +
+  geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+  geom_jitter(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.05)) +
+  scale_fill_manual(values = c("grey", "darkred")) +
+  scale_color_manual(values = c("grey40", "darkred")) +
+  geom_text(data = WilcoxMetadf, aes(x, y, label = Text), inherit.aes = F, size = 4)
+ggsave(paste0("MetaSignif_TF.pdf"), device = "pdf", width = 8, height = 5, dpi = 300, useDingbats = F, path = ResultsPath)
+closeDev()
+
+ggplot(HDACdataPlotData %>% filter(!is.na(CohortSignif), PDgene == "Yes") %>% 
+         filter(EP300_Peak > 0 & HDAC_Binding_Peak > 0),
+       aes(Cohort, log(EP300_Peak + 0.01)-log(HDAC_Binding_Peak+0.01),fill = CohortSignif, color = CohortSignif)) +
+  theme_minimal() +
+  labs(y = "log(p300_binding/HDAC_binding)", x = "") +
+  geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+  geom_jitter(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.05)) +
+  scale_fill_manual(values = c("grey", "darkred")) +
+  scale_color_manual(values = c("grey40", "darkred")) +
+  geom_text(data = WilcoxCohortdf, aes(x, y, label = Text), inherit.aes = F, size = 4)
+ggsave(paste0("CohortSignif_TF.pdf"), device = "pdf", width = 8, height = 5, dpi = 300, useDingbats = F, path = ResultsPath)
+closeDev()
+
+
+
 
 

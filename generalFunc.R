@@ -37,7 +37,6 @@ packageF("curl")
 packageF("gplots")
 packageF("scales")
 packageF("devtools")
-packageF("magrittr")
 select = dplyr::select
 filter = dplyr::filter
 mutate = dplyr::mutate
