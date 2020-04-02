@@ -1,5 +1,6 @@
 packageF("ggpubr")
-
+source("generalFunc.R")
+source("ProjectScripts/ProjectFunctions.R")
 
 install_github("https://github.com/PavlidisLab/ermineR")
 library(ermineR)
