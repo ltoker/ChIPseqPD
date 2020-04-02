@@ -14,3 +14,5 @@ source("ProjectScripts/AnalysisCaseControl.R")
 source("ProjectScripts/ComparePVNBB.R")  #this is the main analysis for comparing the two cohorts
 
 source("ProjectScripts/MoreComparison.R") #this is mostly for the MA and manhattan plots. Also has the statistics for the overlaps
+source("ProjectScripts/AdditionalAnalyses.R") #this part does enrichment analysis based on decoupling and performs analyses related to
+                                              #association with p300 and HDAC binding sites
