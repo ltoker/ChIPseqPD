@@ -3,8 +3,6 @@ source("ProjectScripts/ProjectFunctions.R")
 plotMA = DESeq2::plotMA
 packageF("org.Hs.eg.db")
 
-#This files contains all the relevant file locations and filters samples relevant to the analysis. Comment the irrelevant lines
-source("ProjectScripts/ConfigFile.R")
 
 if(!ResultsPath %in% list.dirs(full.names = F, recursive = F)){
   dir.create(ResultsPath)
