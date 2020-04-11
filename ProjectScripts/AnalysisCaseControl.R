@@ -198,35 +198,14 @@ HTseqCounts$MaxCount = apply(HTseqCounts %>% select(matches("^X")), 1, max)
 HTseqCounts %<>% mutate(NormalizedMaxCount = MaxCount/Length)  
 
 AllCalledData <- GetCountMatrixHTseq(HTseqCounts, OtherNormRegEx = "^C1orf43_|^CHMP2A_|^EMC7_|^GPI_|^PSMB2_|^PSMB4_|^RAB7A_|^REEP5_|^SNRPD3_|^VCP_|^VPS29")
-closeDev()
+
 
 ##### Get relative cell proportion for based on differential NeuN positive and negative cell H3K27ac peaks ##########  
-AllCalledData$SampleInfo <- GetCellularProportions(AllCalledData$SampleInfo)
+AllCalledData$SampleInfo <- AllCalledData$SampleInfo <- GetCellularProportions(AllCalledData$SampleInfo, MetaSamplCol = "SampleID")
 
-pdf(paste0(ResultsPath, "SampleCorPromoter", Cohort, ".pdf"), useDingbats = F, width = 10, height = 8)
-countMatrixPromotersAllCalled  <- GetCollapsedMatrix(countsMatrixAnnot = AllCalledData$countsMatrixAnnot, collapseBy = "GeneAnnoType",CorMethod = "pearson",
-                                                     FilterBy = "promoter", meta = AllCalledData$SampleInfo,
-                                                     title = paste0("Sample correlation (promoter), Peaks - called together, ", Cohort))
-closeDev()
-
-#Detect outliers
-MedianCor <- apply(countMatrixPromotersAllCalled$SampleCor, 1, function(x) median(x, na.rm = TRUE))
-Outlier <- MedianCor[MedianCor < (median(MedianCor) - 1.5*iqr(MedianCor))]
 
 Model = as.formula(" ~ condition + sex + age + batch + pm_hours + Oligo_MSP")
 
-DESeqOutAll_promoters <- RunDESeq(data = countMatrixPromotersAllCalled$countMatrix,UseModelMatrix = T, sampleToFilter = paste(sapply(names(Outlier), function(x) gsub("X", "", x)), collapse = "|"),
-                                  meta = countMatrixPromotersAllCalled$Metadata, normFactor = "MeanRatioOrg",
-                                  FullModel = Model, test = "Wald", FitType = "local")
-
-                                    
-DESegResultsSex_promotersAll <- GetDESeqResults(DESeqOutAll_promoters, coef = "sexM") %>% mutate(symbol = sapply(.$PeakName, function(x) {strsplit(x, "_")[[1]][1]}))
-DESegResultsAge_promotersAll <- GetDESeqResults(DESeqOutAll_promoters, coef = "age") %>% mutate(symbol = sapply(.$PeakName, function(x) {strsplit(x, "_")[[1]][1]}))
-DESegResultsGroup_promotersAll <- GetDESeqResults(DESeqOutAll_promoters, coef = "conditionPD") %>% mutate(symbol = sapply(.$PeakName, function(x) {strsplit(x, "_")[[1]][1]}))
-
-###########################################################################################################
-############ RERUN USING PEAKS BASED ON ALL THE SAMPLES, without collapsing peaks #########################
-###########################################################################################################
 pdf(paste0(ResultsPath, "SampleCorAllPeaks", Cohort, ".pdf"), useDingbats = F, width = 10, height = 8)
 countMatrixFullAllCalled <- GetCollapsedMatrix(countsMatrixAnnot = AllCalledData$countsMatrixAnnot %>% filter(!duplicated(.$PeakName)), collapseBy = "PeakName",CorMethod = "pearson",
                                                FilterBy = "", meta = AllCalledData$SampleInfo, title = paste0("Sample correlation, ", Cohort))

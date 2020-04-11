@@ -163,11 +163,12 @@ GetCountMatrixHTseq <- function(countsDF, meta = Metadata,
   MeasureCor <- cor(HouseKeepingRatioPlot %>% select(-matches("id|Sample")), method = "spearman")
   diag(MeasureCor) <- NA
   
-  pheatmap(MeasureCor, angle_col = 90, na_col = "white", display_numbers = T)
+  Plot <- pheatmap(MeasureCor, angle_col = 90, na_col = "white", display_numbers = T, filename = paste0(ResultsPath, "HouseKeepingCor", Cohort, ".pdf"), width = 8, height = 8)
   return(list(countsDF = countsDF,
               countsMatrixAnnot = countsMatrixAnnot,
               SampleInfo = SampleInfo,
-              MeasureCor = MeasureCor))
+              MeasureCor = MeasureCor,
+              HeatMap = Plot))
 }
 
 GetCollapsedMatrix <- function(countsMatrixAnnot, collapseBy, FilterBy, meta = Metadata, normCol = NULL, title = NULL, samples = "All", CorMethod = "pearson"){
@@ -217,8 +218,6 @@ GetCollapsedMatrix <- function(countsMatrixAnnot, collapseBy, FilterBy, meta = M
                     OligoMSP = c("chartreuse4","gray97","maroon"))
   Plot <- pheatmap(SampleCor, angle_col = 90, na_col = "white",border_color = NA,
                    color = colorRampPalette(c("darkblue", "gold2"))(999),
-                   labels_row = meta$activemotif_id,
-                   labels_col = meta$activemotif_id,
                    annotation_col = annoCol,
                    annotation_row = annoRow,
                    annotation_colors = annoColors,
