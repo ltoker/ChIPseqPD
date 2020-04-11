@@ -222,7 +222,7 @@ GetCollapsedMatrix <- function(countsMatrixAnnot, collapseBy, FilterBy, meta = M
                    annotation_col = annoCol,
                    annotation_row = annoRow,
                    annotation_colors = annoColors,
-                   main = title)
+                   main = title, filename = paste0(ResultsPath, "SampleCorAllPeaks", Cohort, ".pdf"), width = 10, height = 8)
   
   return(list(countMatrix = subData,
               Metadata = meta,
