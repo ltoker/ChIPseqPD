@@ -6,7 +6,7 @@ source("ProjectScripts/ConfigFilePV.R") #This files contains all the relevant fi
 source("ProjectScripts/AnalysisCaseControl.R")
 
 #Basic analysis in the PW cohort
-source("ProjectScripts/ConfigFilePW.R") #This files contains all the relevant file locations and filters samples relevant to NBB cohort
+source("ProjectScripts/ConfigFileNBB.R") #This files contains all the relevant file locations and filters samples relevant to NBB cohort
 source("ProjectScripts/AnalysisCaseControl.R")
 
 
