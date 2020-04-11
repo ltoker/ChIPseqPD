@@ -53,14 +53,14 @@ names(InputPeakGroupCalled$PeakData) <- sapply(names(InputPeakGroupCalled$PeakDa
   }
 })
 
-InputPeakGroupCalled$PeakData <- mclapply(InputPeakGroupCalled$PeakData, function(grp){
+InputPeakGroupCalled$PeakData <- lapply(InputPeakGroupCalled$PeakData, function(grp){
   temp <- read.table(grp, header = F, sep = "\t")
   names(temp) <- c("CHR", "START", "END", "PeakName", "Score", "Srand", "Enrichment", "pPvalue", "pQvalue", "OffsetFromStart")[1:ncol(temp)]
   temp$CHR <- sapply(as.character(temp$CHR), function(x) paste0("chr", x))
   temp <- temp[!grepl("GL|hs", temp$CHR),] %>% droplevels()
   temp %<>% mutate(pValue = 10^(-pPvalue)) %>% filter(pValue < 10^(-7))
   temp %>% arrange(CHR, START) %>% as(.,"GRanges")
-}, mc.cores = detectCores()) 
+})#, mc.cores = detectCores()) 
 
 GroupPeakOverlap <- findOverlaps(InputPeakGroupCalled$PeakData$PD, InputPeakGroupCalled$PeakData$Cont)
 InputPeakGroupCalled$UniquePeaks <- list(PD = InputPeakGroupCalled$PeakData$PD[-queryHits(GroupPeakOverlap)],
