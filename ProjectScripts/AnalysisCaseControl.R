@@ -53,14 +53,14 @@ names(InputPeakGroupCalled$PeakData) <- sapply(names(InputPeakGroupCalled$PeakDa
   }
 })
 
-InputPeakGroupCalled$PeakData <- mclapply(InputPeakGroupCalled$PeakData, function(grp){
+InputPeakGroupCalled$PeakData <- lapply(InputPeakGroupCalled$PeakData, function(grp){
   temp <- read.table(grp, header = F, sep = "\t")
   names(temp) <- c("CHR", "START", "END", "PeakName", "Score", "Srand", "Enrichment", "pPvalue", "pQvalue", "OffsetFromStart")[1:ncol(temp)]
   temp$CHR <- sapply(as.character(temp$CHR), function(x) paste0("chr", x))
   temp <- temp[!grepl("GL|hs", temp$CHR),] %>% droplevels()
   temp %<>% mutate(pValue = 10^(-pPvalue)) %>% filter(pValue < 10^(-7))
   temp %>% arrange(CHR, START) %>% as(.,"GRanges")
-}, mc.cores = detectCores()) 
+})#, mc.cores = detectCores()) 
 
 GroupPeakOverlap <- findOverlaps(InputPeakGroupCalled$PeakData$PD, InputPeakGroupCalled$PeakData$Cont)
 InputPeakGroupCalled$UniquePeaks <- list(PD = InputPeakGroupCalled$PeakData$PD[-queryHits(GroupPeakOverlap)],
@@ -161,6 +161,8 @@ Plot <- ggplot(DataToPlot, aes(Condition, Value, fill = Condition)) +
   facet_wrap(~Measure, nrow = 1, scales = "free")
 ggsave(paste0("GroupPeaksDifference", Cohort, ".pdf"), plot = Plot, device = "pdf", width = 10, height = 4, dpi = 300, useDingbats = F, path = ResultsPath)
 closeDev()
+
+
 ################ Repeat for peaks called on all samples combined ############
 
 InputPeakAllCalled <- list()
@@ -169,7 +171,6 @@ names(InputPeakAllCalled$PeakData) <- c("CHR", "START", "END", "PeakName", "Scor
 InputPeakAllCalled$PeakData %<>% mutate(pValue = 10^(-pPvalue)) %>% filter(pValue < 10^(-7))
 InputPeakAllCalled$PeakData <- InputPeakAllCalled$PeakData[!grepl("GL|hs", InputPeakAllCalled$PeakData$CHR),] %>% droplevels()
 InputPeakAllCalled$PeakData %<>% arrange(CHR, START) %>% as(.,"GRanges")
-
 
 
 InputPeakAllCalled$Summary <- data.frame(TotalPeaks = InputPeakAllCalled$PeakData %>% data.frame %>% nrow,
@@ -198,41 +199,18 @@ HTseqCounts$MaxCount = apply(HTseqCounts %>% select(matches("^X")), 1, max)
 HTseqCounts %<>% mutate(NormalizedMaxCount = MaxCount/Length)  
 
 AllCalledData <- GetCountMatrixHTseq(HTseqCounts, OtherNormRegEx = "^C1orf43_|^CHMP2A_|^EMC7_|^GPI_|^PSMB2_|^PSMB4_|^RAB7A_|^REEP5_|^SNRPD3_|^VCP_|^VPS29")
-closeDev()
+
 
 ##### Get relative cell proportion for based on differential NeuN positive and negative cell H3K27ac peaks ##########  
-AllCalledData$SampleInfo <- GetCellularProportions(AllCalledData$SampleInfo)
+AllCalledData$SampleInfo <- AllCalledData$SampleInfo <- GetCellularProportions(AllCalledData$SampleInfo, MetaSamplCol = "SampleID")
 
-pdf(paste0(ResultsPath, "SampleCorPromoter", Cohort, ".pdf"), useDingbats = F, width = 10, height = 8)
-countMatrixPromotersAllCalled  <- GetCollapsedMatrix(countsMatrixAnnot = AllCalledData$countsMatrixAnnot, collapseBy = "GeneAnnoType",CorMethod = "pearson",
-                                                     FilterBy = "promoter", meta = AllCalledData$SampleInfo,
-                                                     title = paste0("Sample correlation (promoter), Peaks - called together, ", Cohort))
-closeDev()
-
-#Detect outliers
-MedianCor <- apply(countMatrixPromotersAllCalled$SampleCor, 1, function(x) median(x, na.rm = TRUE))
-Outlier <- MedianCor[MedianCor < (median(MedianCor) - 1.5*iqr(MedianCor))]
 
 Model = as.formula(" ~ condition + sex + age + batch + pm_hours + Oligo_MSP")
 
-DESeqOutAll_promoters <- RunDESeq(data = countMatrixPromotersAllCalled$countMatrix,UseModelMatrix = T, sampleToFilter = paste(sapply(names(Outlier), function(x) gsub("X", "", x)), collapse = "|"),
-                                  meta = countMatrixPromotersAllCalled$Metadata, normFactor = "MeanRatioOrg",
-                                  FullModel = Model, test = "Wald", FitType = "local")
-
-                                    
-DESegResultsSex_promotersAll <- GetDESeqResults(DESeqOutAll_promoters, coef = "sexM") %>% mutate(symbol = sapply(.$PeakName, function(x) {strsplit(x, "_")[[1]][1]}))
-DESegResultsAge_promotersAll <- GetDESeqResults(DESeqOutAll_promoters, coef = "age") %>% mutate(symbol = sapply(.$PeakName, function(x) {strsplit(x, "_")[[1]][1]}))
-DESegResultsGroup_promotersAll <- GetDESeqResults(DESeqOutAll_promoters, coef = "conditionPD") %>% mutate(symbol = sapply(.$PeakName, function(x) {strsplit(x, "_")[[1]][1]}))
-
-###########################################################################################################
-############ RERUN USING PEAKS BASED ON ALL THE SAMPLES, without collapsing peaks #########################
-###########################################################################################################
-pdf(paste0(ResultsPath, "SampleCorAllPeaks", Cohort, ".pdf"), useDingbats = F, width = 10, height = 8)
-countMatrixFullAllCalled <- GetCollapsedMatrix(countsMatrixAnnot = AllCalledData$countsMatrixAnnot %>% filter(!duplicated(.$PeakName)), collapseBy = "PeakName",CorMethod = "pearson",
+countMatrixFullAllCalled <- GetCollapsedMatrix(countsMatrixAnnot = AllCalledData$countsMatrixAnnot %>% filter(!duplicated(.$PeakName)), collapseBy = "PeakName",CorMethod = "pearson",countSampleRegEx = "^X",MetaSamleCol = "SampleID", MetaSamleIDCol = "SampleID",
                                                FilterBy = "", meta = AllCalledData$SampleInfo, title = paste0("Sample correlation, ", Cohort))
-closeDev()
 
-#Get the pvalues for associasion of each covariate with the first 3 PCs
+#Get the pvalues for associasion of each covariate with the first 5 PCs
 PCAsamples <- prcomp(t(countMatrixFullAllCalled$CPMdata), scale. = T)
 countMatrixFullAllCalled$Metadata %<>% mutate(PC1 = PCAsamples$x[,1],
                                               PC2 = PCAsamples$x[,2],
@@ -266,7 +244,7 @@ Plot  <- ggplot(CovarPvaluesMelt, aes(PC, Variable)) +
 ggsave(paste0("AssociationWithPCs", Cohort, ".pdf"), plot = Plot, device = "pdf", width = 10, height = 8, dpi = 300, useDingbats = F, path = ResultsPath)
 closeDev()
 
-
+#Filer peaks with low normalized count
 countMatrixDF <- AllCalledData$countsMatrixAnnot %>% filter(!duplicated(.$PeakName)) %>% data.frame %>% select(matches("Peak|^X"))
 countMatrixDF$MedianCount <- apply(countMatrixDF %>% select(matches("^X")), 1, mean)
 countMatrixDF %<>% mutate(NormCount = 200*MedianCount/Peak.width)
@@ -327,34 +305,8 @@ Plot <- ggplot(MeltedDataAll %>% filter(MeasureType == "RiP/MeanRatio", !activem
 ggsave(paste0("GroupNormRiP", Cohort, ".pdf"), plot = Plot, device = "pdf", width = 10, height = 6, dpi = 300, useDingbats = F, path = ResultsPath)
 closeDev()
 
-Plot <- ggplot(MeltedDataAll %>% filter(MeasureType == "RiP/MeanRatio", !activemotif_id %in% c("57", "39")), aes(condition, H3K27gapdh_Norm, color = condition)) +
-  theme_bw(base_size = 14) +
-  theme(panel.grid = element_blank()) +
-  labs(x = "", y = "WB H3K27ac/GAPDH ", title = Cohort) +
-  geom_boxplot(outlier.shape = NA, aes(fill = condition), alpha = 0.4) +
-  geom_jitter(width = 0.2, aes(color = condition)) +
-  scale_color_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
-  scale_fill_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
-  scale_y_continuous(labels = xLabFun)
-ggsave(paste0("GroupWB", Cohort, ".pdf"), plot = Plot, device = "pdf", width = 10, height = 6, dpi = 300, useDingbats = F, path = ResultsPath)
-closeDev()
 
-
-Plot <- ggplot(MeltedDataAll %>% filter(MeasureType == "RiP/MeanRatio", !activemotif_id %in% c("57", "39")), aes(age, Value, fill = condition)) +
-  theme_bw(base_size = 14) +
-  theme(panel.grid = element_blank()) +
-  labs(x = "Age", y = "Normalized RiP", title = Cohort) +
-  geom_smooth(method = "lm", aes(fill = condition, color = condition), alpha = 0.3, size = 0.2) +
-  geom_point(size = 2, aes(color = condition)) +
-  scale_fill_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
-  scale_color_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
-  scale_y_continuous(labels = xLabFun) +
-  facet_wrap(~condition, scales = "free_x")
-ggsave(paste0("AgeRipCorrelation", Cohort, ".pdf"), plot = Plot, device = "pdf", width = 10, height = 6, dpi = 300, useDingbats = F, path = ResultsPath)
-closeDev()
-
-
-#Look at the correlation betweem expression-based and ChIP-seq based cell abundance estimates
+#Look at the group differences of cell abundance estimates
 CellData <- countMatrixFullAllCalled$Metadata %>% select(-matches("__|RiP|All|gapdh|Backgr|library|Total|h3")) %>% gather(matches("Genes"), key = "CellTypeMGP", value = "MGP")
 CellData$CellTypeMGP <- sapply(CellData$CellTypeMGP, function(x) gsub("_Genes", "", x))
 CellData %<>% gather(matches("MSP"), key = "CellTypeMSP", value = "MSP")

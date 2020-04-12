@@ -1,10 +1,18 @@
-packageF("ggpubr")
 source("generalFunc.R")
 source("ProjectScripts/ProjectFunctions.R")
+packageF("ggpubr")
+
+ResultsPath = "GeneralResults/"
+
+load("GeneralResults/CombinedData.Rda")
+resultsNBB <- readRDS("ResultsNBB_Final//NBBDEresults.Rds") %>% arrange(padj)
+resultsPV <- readRDS("ResultsPV_Final//PVDEresults.Rds") %>% arrange(padj) 
+PDgenes <- read.table(paste0(ResultsPath, "PDgeneStat.tsv"), sep = "\t", header = TRUE)
 
 install_github("https://github.com/PavlidisLab/ermineR")
 library(ermineR)
 HumanAnno <- fread('https://gemma.msl.ubc.ca/annots/Generic_human_noParents.an.txt.gz', header = T) %>% data.frame()
+
 PVenrich <- gsr(scores = MergedChIPrna, scoreColumn = "Delta.PV", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = F, logTrans = F)
 NBBenrich <- gsr(scores = MergedChIPrna, scoreColumn = "Delta.NBB", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = F, logTrans = F)
 
@@ -73,12 +81,6 @@ ggarrange(p2,p1,p3, nrow = 1)
 ggsave(paste0("MitoGenesCor.pdf"), device = "pdf", width = 10, height = 2, dpi = 300, useDingbats = F, path = ResultsPath)
 closeDev()
 
-PVenrichRLE <- gsr(scores = MergedChIPrnaRLE, scoreColumn = "Delta.PV", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = T, logTrans = F)
-NBBenrichRLE <- gsr(scores = MergedChIPrnaRLE, scoreColumn = "Delta.NBB", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = T, logTrans = F)
-
-
-
-
 
 PVenrichPDdown <- gsr(scores = MergedChIPrna, scoreColumn = "CorPD.PV", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = F, logTrans = F)
 NBBenrichPDdown <- gsr(scores = MergedChIPrna, scoreColumn = "CorPD.NBB", aspects = c("M", "B", "C"), annotation = HumanAnno, bigIsBetter = F, logTrans = F)
@@ -93,33 +95,6 @@ write.table(NBBenrichPDdown$results %>% data.frame()
               arrange(Pval) %>% filter(CorrectedPvalue < 0.05),
             "GeneralResults/NBBenrichPDdown.tsv", row.names = F, col.names = T, sep = "\t")
 
-
-SequencedDeep <- read.table("15794-1446155273_Covered.bed", header = F, sep= "\t", skip = 2)
-names(SequencedDeep) <- c("CHR", "START", "END", "GeneSymbol")
-
-SequencedDeep %<>% as("GRanges")
-
-SignifMetaRegions <- CommonRegions %>% filter(AdjmetaP < 0.05) %>%
-  select(UniqueRegionGeneType, AdjmetaP, padj.PV, padj.NBB) 
-
-SignifMetaRegions$CHR <- sapply(SignifMetaRegions$UniqueRegionGeneType, function(x){
-  strsplit(x, ":")[[1]][1]
-})
-
-SignifMetaRegions$START <- sapply(SignifMetaRegions$UniqueRegionGeneType, function(x){
-  strsplit(x, ":|-")[[1]][2] 
-})
-
-SignifMetaRegions$END <- sapply(SignifMetaRegions$UniqueRegionGeneType, function(x){
-  strsplit(x, ":|-|_")[[1]][3] 
-})
-
-SignifMetaRegions %<>% as("GRanges")
-
-temp <- mergeByOverlaps(SequencedDeep, SignifMetaRegions) %>%
-  data.frame() %>% select(-c(5,6, 8:16))
-
-write.table(temp, "DeepSequencedSignifMetaP.tsv", row.names = F, col.names = T, sep = "\t")
 
 #Look at p300 and HDAC binding sites
 PVnarrowPeak <- read.table("data/Peaks/PV_ALL_RNA.narrowPeakClean.gz", header = F, sep = "\t")
@@ -207,8 +182,11 @@ resultsNBB %<>% mutate(HDAC_Binding_Gene = HDAC1_Gene + HDAC2_Gene + HDAC6_Gene 
                        EP300_DeltaBinding_Gene = EP300_Gene - HDAC_Binding_Gene,
                        pPvalue = -log10(pvalue))
 
-resultsNBB$pPvalue2[resultsNBB$DirectionChange == "Hypoacetylated"] <- 1-resultsNBB$pvalue[resultsNBB$DirectionChange == "Hypoacetylated"]/2
-resultsNBB$pPvalue2[resultsNBB$DirectionChange == "Hyperacetylated"] <- resultsNBB$pvalue[resultsNBB$DirectionChange == "Hyperacetylated"]/2
+
+
+resultsNBB$pPvalue2 <- NA
+resultsNBB$pPvalue2[resultsNBB$log2FoldChange < 0] <- 1-resultsNBB$pvalue[resultsNBB$log2FoldChange < 0]/2
+resultsNBB$pPvalue2[resultsNBB$log2FoldChange > 0] <- resultsNBB$pvalue[resultsNBB$log2FoldChange > 0]/2
 resultsNBB %<>% mutate(pPvalue2 = -log10(pPvalue2))
 
 resultsNBB <- merge(resultsNBB, NBBnarrowPeak %>% filter(!duplicated(PeakName.NBB)) %>% select(-symbol), by.x = "PeakName", by.y = "PeakName.NBB", all.x = T, sort = F)
@@ -223,14 +201,21 @@ resultsPV %<>% mutate(HDAC_Binding_Gene = HDAC1_Gene + HDAC2_Gene + HDAC6_Gene +
                       EP300_DeltaBinding_Gene = EP300_Gene - HDAC_Binding_Gene,
                       pPvalue = -log10(pvalue))
                        
-resultsPV$pPvalue2[resultsPV$DirectionChange == "Hypoacetylated"] <- 1-resultsPV$pvalue[resultsPV$DirectionChange == "Hypoacetylated"]/2
-resultsPV$pPvalue2[resultsPV$DirectionChange == "Hyperacetylated"] <- resultsPV$pvalue[resultsPV$DirectionChange == "Hyperacetylated"]/2
+resultsPV$pPvalue2 <- NA
+resultsPV$pPvalue2[resultsPV$log2FoldChange < 0] <- 1-resultsPV$pvalue[resultsPV$log2FoldChange < 0]/2
+resultsPV$pPvalue2[resultsPV$log2FoldChange > 0] <- resultsPV$pvalue[resultsPV$log2FoldChange > 0]/2
 resultsPV %<>% mutate(pPvalue2 = -log10(pPvalue2))
 
 resultsPV <- merge(resultsPV, PVnarrowPeak %>% filter(!duplicated(PeakName.PV)) %>% select(-symbol), by.x = "PeakName", by.y = "PeakName.PV", all.x = T, sort = F)
 resultsPV %<>% mutate(HDAC_Binding.PV = HDAC1.PV + HDAC2.PV + HDAC6.PV + HDAC8.PV + SIRT6.PV)
 names(resultsPV) <- sapply(names(resultsPV), function(x) gsub(".PV", "_Peak", x))
 
+#Add information about whether gene is a PDgene or not
+resultsPV$PDgene <- "No"
+resultsPV$PDgene[as.character(resultsPV$symbol) %in% as.character(PDgenes$Gene)] <- "Yes"
+
+resultsNBB$PDgene <- "No"
+resultsNBB$PDgene[as.character(resultsNBB$symbol) %in% as.character(PDgenes$Gene)] <- "Yes"
 
 #Gene level
 lm(pPvalue2 ~ EP300_Gene + HDAC1_Gene + HDAC2_Gene + HDAC6_Gene + HDAC8_Gene + SIRT6_Gene  + PDgene,
@@ -375,7 +360,7 @@ ggplot(HDACdataPlotData %>% filter(!is.na(CohortSignif), PDgene == "Yes") %>%
 ggsave(paste0("CohortSignif_TF.pdf"), device = "pdf", width = 8, height = 5, dpi = 300, useDingbats = F, path = ResultsPath)
 closeDev()
 
-
+saveRDS(sessionInfo(), file = "SessionInfo.RDS")
 
 
 

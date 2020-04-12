@@ -163,24 +163,25 @@ GetCountMatrixHTseq <- function(countsDF, meta = Metadata,
   MeasureCor <- cor(HouseKeepingRatioPlot %>% select(-matches("id|Sample")), method = "spearman")
   diag(MeasureCor) <- NA
   
-  pheatmap(MeasureCor, angle_col = 90, na_col = "white", display_numbers = T)
+  Plot <- pheatmap(MeasureCor, angle_col = 90, na_col = "white", display_numbers = T, filename = paste0(ResultsPath, "HouseKeepingCor", Cohort, ".pdf"), width = 8, height = 8)
   return(list(countsDF = countsDF,
               countsMatrixAnnot = countsMatrixAnnot,
               SampleInfo = SampleInfo,
-              MeasureCor = MeasureCor))
+              MeasureCor = MeasureCor,
+              HeatMap = Plot))
 }
 
-GetCollapsedMatrix <- function(countsMatrixAnnot, collapseBy, FilterBy, meta = Metadata, normCol = NULL, title = NULL, samples = "All", CorMethod = "pearson"){
+GetCollapsedMatrix <- function(countsMatrixAnnot, collapseBy, FilterBy, meta = Metadata, normCol = NULL,
+                               title = NULL, samples = "All", CorMethod = "pearson", countSampleRegEx = "^X",
+                               MetaSamleCol = "activemotif_id", MetaSamleIDCol = "SampleID", groupCol = "condition"){
   if(is.null(title)){
     title = paste0("Sample correlation (", FilterBy, ")")
   }
-  
   Data <- countsMatrixAnnot %>% select(matches(paste0(collapseBy, "|^X"))) %>% group_by(.dots = collapseBy) %>% summarise_if(is.numeric, sum, na.rm = TRUE) %>% data.frame
   names(Data)[grepl(collapseBy, names(Data))] <- "PeakName"
   subData <- Data[grepl(FilterBy, Data$PeakName),]
   rownames(subData) <- subData$PeakName
   subData <- subData[-1]
-  
   subData <- apply(subData, c(1, 2), function(x) as.integer(round(x, digits = 0)))
   
   if(!"All" %in% samples){
@@ -217,8 +218,6 @@ GetCollapsedMatrix <- function(countsMatrixAnnot, collapseBy, FilterBy, meta = M
                     OligoMSP = c("chartreuse4","gray97","maroon"))
   Plot <- pheatmap(SampleCor, angle_col = 90, na_col = "white",border_color = NA,
                    color = colorRampPalette(c("darkblue", "gold2"))(999),
-                   labels_row = meta$activemotif_id,
-                   labels_col = meta$activemotif_id,
                    annotation_col = annoCol,
                    annotation_row = annoRow,
                    annotation_colors = annoColors,
@@ -231,22 +230,24 @@ GetCollapsedMatrix <- function(countsMatrixAnnot, collapseBy, FilterBy, meta = M
               HeatMap = Plot))
 }
 
-GetCellularProportions <- function(Metadata, normCol = NULL){
+GetCellularProportions <- function(Metadata, normCol = NULL, MetaSamplCol = "SampleID"){
   if("CellTypeH3K27ac.tsv" %in% list.files("CellTypeH3K27ac")){
-    CellTypePeaks <- read.table("CellTypeH3K27ac/CellTypeH3K27ac.tsv", header = T, sep = "\t")
+    CellTypePeaks <- read.table("CellTypeH3K27ac/CellTypeH3K27ac.tsv", header = T, sep = "\t") #These are differentially acetylated peaks between NeuN+/NeuN- cells based on Girdhar et al.
   } else {
     source(paste0("ProjectScripts/CellProportions.R"))
   }
-  
   #Get relative cell proportion for the samples based on differential NeuN positive and negative cell H3K27ac peaks  
   HTseqCountsSamples <- read.table(CellTypePeakCountLoc, header = T, sep = "\t")
+  HTseqCountsSamples %<>% select(-matches("60_05H1_00ICHauk_H3K27Ac_hs_i88")) #this sample was ran twice
+  
   names(HTseqCountsSamples) <- sapply(names(HTseqCountsSamples), function(x){
-    x = gsub(".data.parkome.chipseq.results.bamfiles.0?", "", x)
+    x = gsub(".*bamfiles.0?", "", x)
     strsplit(x,"_")[[1]][1]
-  })
+  }) %>% make.names()
+  
   HTseqCountsSamples$NeuronFC <- CellTypePeaks$log2FoldChange[match(HTseqCountsSamples$Geneid, CellTypePeaks$PeakName)]
   
-  counMatrixSamples <- HTseqCountsSamples %>% select(paste0("X", as.character(Metadata$activemotif_id))) %>% as.matrix()
+  counMatrixSamples <- HTseqCountsSamples %>% select(as.character(Metadata[[MetaSamplCol]])) %>% as.matrix()
   rownames(counMatrixSamples) <- as.character(HTseqCountsSamples$Geneid)
   
   if(!is.null(normCol)){
@@ -344,7 +345,7 @@ GetCellularProportions <- function(Metadata, normCol = NULL){
   
   MSP_out <- lapply(PCAcellType, function(CellType){
     rescale(CellType$x[,1], to = c(0,1))
-  }) %>% do.call(cbind, .) %>% data.frame %>% mutate(Sample = sapply(row.names(.), function(x) gsub("X", "", x)))
+  }) %>% do.call(cbind, .) %>% data.frame %>% mutate(Sample = row.names(.))
   
   #Add general calculation based on ratio between bneuronal and glial peaks, this is for comparing different regions
   counMatrixSamples2 <- counMatrixSamples2[rownames(counMatrixSamples2) %in% (CellTypePeaks %>% filter(abs(log2FoldChange) > 3, !duplicated(PeakName)) %>% .$PeakName),]
@@ -371,8 +372,7 @@ GetCellularProportions <- function(Metadata, normCol = NULL){
   }
   
   Metadata$NeuronProp <- rescale(to = c(0,1), x = CellTypePCA$x[,1])
-  
-  Metadata <- merge(Metadata, MSP_out, by.x = "activemotif_id", by.y = "Sample")
+  Metadata <- merge(Metadata, MSP_out, by.x = MetaSamplCol, by.y = "Sample")
   return(Metadata)
 }
 
