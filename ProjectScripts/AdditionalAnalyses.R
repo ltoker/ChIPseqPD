@@ -125,8 +125,10 @@ NBBnarrowPeakOrg <- NBBnarrowPeak
 write.table(NBBnarrowPeak %>% select(-DApvalue, -pPvalue,  -RescaledVal), "data/Peaks/NBB_ALL.narrowPeakClean2b", row.names = F, col.names = F, sep = "\t")
 write.table(PVnarrowPeak %>% select(-DApvalue, -pPvalue,  -RescaledVal), "data/Peaks/PV_ALL_RNA.narrowPeakClean2b", row.names = F, col.names = F, sep = "\t")
 
+download.file("https://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeRegTfbsClustered/wgEncodeRegTfbsClusteredV3.bed.gz",
+              destfile = "data/wgEncodeRegTfbsClusteredV3.bed.gz")
 
-ENCODEdata <- read.table("data/wgEncodeRegTfbsClusteredV3.bed", header = F, sep = "\t")
+ENCODEdata <- read.table("data/wgEncodeRegTfbsClusteredV3.bed.gz", header = F, sep = "\t")
 names(ENCODEdata) <- c("CHR", "START", "END", "Name", "SCORE", "BlockCount", "BlockSizes", "BlockStarts")
 ENCODEdata <- ENCODEdata[grepl("EP300|^HDAC|^SIRT", ENCODEdata$Name),]
 ENCODEdata %<>% droplevels()
