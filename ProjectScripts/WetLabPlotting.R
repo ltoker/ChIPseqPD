@@ -1,4 +1,5 @@
 ResultsPath = "GeneralResults/"
+source("generalFunc.R")
 source("ProjectScripts/ProjectFunctions.R")
 
 StatData <- read.table("data/Supplementary_Table_2.txt", sep = "\t", header = T, comment.char = "!", quote = "'")

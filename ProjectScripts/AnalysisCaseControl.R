@@ -161,6 +161,8 @@ Plot <- ggplot(DataToPlot, aes(Condition, Value, fill = Condition)) +
   facet_wrap(~Measure, nrow = 1, scales = "free")
 ggsave(paste0("GroupPeaksDifference", Cohort, ".pdf"), plot = Plot, device = "pdf", width = 10, height = 4, dpi = 300, useDingbats = F, path = ResultsPath)
 closeDev()
+
+
 ################ Repeat for peaks called on all samples combined ############
 
 InputPeakAllCalled <- list()
@@ -169,7 +171,6 @@ names(InputPeakAllCalled$PeakData) <- c("CHR", "START", "END", "PeakName", "Scor
 InputPeakAllCalled$PeakData %<>% mutate(pValue = 10^(-pPvalue)) %>% filter(pValue < 10^(-7))
 InputPeakAllCalled$PeakData <- InputPeakAllCalled$PeakData[!grepl("GL|hs", InputPeakAllCalled$PeakData$CHR),] %>% droplevels()
 InputPeakAllCalled$PeakData %<>% arrange(CHR, START) %>% as(.,"GRanges")
-
 
 
 InputPeakAllCalled$Summary <- data.frame(TotalPeaks = InputPeakAllCalled$PeakData %>% data.frame %>% nrow,
@@ -206,12 +207,10 @@ AllCalledData$SampleInfo <- AllCalledData$SampleInfo <- GetCellularProportions(A
 
 Model = as.formula(" ~ condition + sex + age + batch + pm_hours + Oligo_MSP")
 
-pdf(paste0(ResultsPath, "SampleCorAllPeaks", Cohort, ".pdf"), useDingbats = F, width = 10, height = 8)
-countMatrixFullAllCalled <- GetCollapsedMatrix(countsMatrixAnnot = AllCalledData$countsMatrixAnnot %>% filter(!duplicated(.$PeakName)), collapseBy = "PeakName",CorMethod = "pearson",
+countMatrixFullAllCalled <- GetCollapsedMatrix(countsMatrixAnnot = AllCalledData$countsMatrixAnnot %>% filter(!duplicated(.$PeakName)), collapseBy = "PeakName",CorMethod = "pearson",countSampleRegEx = "^X",MetaSamleCol = "SampleID", MetaSamleIDCol = "SampleID",
                                                FilterBy = "", meta = AllCalledData$SampleInfo, title = paste0("Sample correlation, ", Cohort))
-closeDev()
 
-#Get the pvalues for associasion of each covariate with the first 3 PCs
+#Get the pvalues for associasion of each covariate with the first 5 PCs
 PCAsamples <- prcomp(t(countMatrixFullAllCalled$CPMdata), scale. = T)
 countMatrixFullAllCalled$Metadata %<>% mutate(PC1 = PCAsamples$x[,1],
                                               PC2 = PCAsamples$x[,2],
@@ -245,7 +244,7 @@ Plot  <- ggplot(CovarPvaluesMelt, aes(PC, Variable)) +
 ggsave(paste0("AssociationWithPCs", Cohort, ".pdf"), plot = Plot, device = "pdf", width = 10, height = 8, dpi = 300, useDingbats = F, path = ResultsPath)
 closeDev()
 
-
+#Filer peaks with low normalized count
 countMatrixDF <- AllCalledData$countsMatrixAnnot %>% filter(!duplicated(.$PeakName)) %>% data.frame %>% select(matches("Peak|^X"))
 countMatrixDF$MedianCount <- apply(countMatrixDF %>% select(matches("^X")), 1, mean)
 countMatrixDF %<>% mutate(NormCount = 200*MedianCount/Peak.width)
@@ -306,34 +305,8 @@ Plot <- ggplot(MeltedDataAll %>% filter(MeasureType == "RiP/MeanRatio", !activem
 ggsave(paste0("GroupNormRiP", Cohort, ".pdf"), plot = Plot, device = "pdf", width = 10, height = 6, dpi = 300, useDingbats = F, path = ResultsPath)
 closeDev()
 
-Plot <- ggplot(MeltedDataAll %>% filter(MeasureType == "RiP/MeanRatio", !activemotif_id %in% c("57", "39")), aes(condition, H3K27gapdh_Norm, color = condition)) +
-  theme_bw(base_size = 14) +
-  theme(panel.grid = element_blank()) +
-  labs(x = "", y = "WB H3K27ac/GAPDH ", title = Cohort) +
-  geom_boxplot(outlier.shape = NA, aes(fill = condition), alpha = 0.4) +
-  geom_jitter(width = 0.2, aes(color = condition)) +
-  scale_color_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
-  scale_fill_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
-  scale_y_continuous(labels = xLabFun)
-ggsave(paste0("GroupWB", Cohort, ".pdf"), plot = Plot, device = "pdf", width = 10, height = 6, dpi = 300, useDingbats = F, path = ResultsPath)
-closeDev()
 
-
-Plot <- ggplot(MeltedDataAll %>% filter(MeasureType == "RiP/MeanRatio", !activemotif_id %in% c("57", "39")), aes(age, Value, fill = condition)) +
-  theme_bw(base_size = 14) +
-  theme(panel.grid = element_blank()) +
-  labs(x = "Age", y = "Normalized RiP", title = Cohort) +
-  geom_smooth(method = "lm", aes(fill = condition, color = condition), alpha = 0.3, size = 0.2) +
-  geom_point(size = 2, aes(color = condition)) +
-  scale_fill_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
-  scale_color_manual(values = c("dodgerblue4", "chocolate1"), name = "Group") +
-  scale_y_continuous(labels = xLabFun) +
-  facet_wrap(~condition, scales = "free_x")
-ggsave(paste0("AgeRipCorrelation", Cohort, ".pdf"), plot = Plot, device = "pdf", width = 10, height = 6, dpi = 300, useDingbats = F, path = ResultsPath)
-closeDev()
-
-
-#Look at the correlation betweem expression-based and ChIP-seq based cell abundance estimates
+#Look at the group differences of cell abundance estimates
 CellData <- countMatrixFullAllCalled$Metadata %>% select(-matches("__|RiP|All|gapdh|Backgr|library|Total|h3")) %>% gather(matches("Genes"), key = "CellTypeMGP", value = "MGP")
 CellData$CellTypeMGP <- sapply(CellData$CellTypeMGP, function(x) gsub("_Genes", "", x))
 CellData %<>% gather(matches("MSP"), key = "CellTypeMSP", value = "MSP")
