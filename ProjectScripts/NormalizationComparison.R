@@ -7,7 +7,7 @@ ResultsPath = "NormalizationComparison"
 SampleFilter =  function(x) x %>% filter(age > 20, cohort == "PV") %>% droplevels()
 CombinedPeakLoc = "data/Peaks/PV_ALL_above_20.narrowPeakClean.gz"
 CountMatrixLoc = "data/PV_ALL_above_20_counts.tsv.gz"
-CellTypePeakCountLoc = "CellTypeH3K27ac/data/PV_ALL_above_20_counts.tsv"
+CellTypePeakCountLoc = "CellTypeH3K27ac/data/PV_ALL_above_20_counts.tsv.gz"
 Cohort = "PV_all_adults"
 
 
