@@ -3,6 +3,11 @@
 # requires Java and might not run on sertain Java vrsions on windows machine. If error occurs, this part can be run on Linux or outside of R on 
 # ermineJ software https://erminej.msl.ubc.ca/
 
+#Comparison of ChIP-seq normalization methods
+source("ProjectScripts/NormalizationComparison.R")
+rm(list = ls(all.names = TRUE))
+
+
 #Basic analysis in the PW cohort 
 source("ProjectScripts/ConfigFilePV.R") #This files contains all the relevant file locations and filters samples relevant to PW cohort
 source("ProjectScripts/AnalysisCaseControl.R")
