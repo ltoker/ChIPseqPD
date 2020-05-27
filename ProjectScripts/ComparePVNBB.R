@@ -181,6 +181,7 @@ PeakNum <- CommonRegions %>%
   group_by(symbol) %>% summarise(n = n()) %>% data.frame
 
 CommonRegions$PeakNum <- PeakNum$n[match(CommonRegions$symbol, PeakNum$symbol)]
+CommonRegions$PromotNum <- PromotNum$n[match(CommonRegions$symbol, PromotNum$symbol)]
 
 CommonRegions$RegionLength <- sapply(CommonRegions$UniqueRegionGeneType, function(x){
   x = strsplit(x, "_")[[1]][1]
@@ -838,9 +839,10 @@ GetChIP_RNAcor <- function(RNApeaks, DESseqOut, AdjCovar, Cohort = "PV", Name){
   RNAcohort = paste0("Adjusted", Cohort)
   GeneList <- as.list(RNApeaks$PeakName)
   names(GeneList) <- RNApeaks$PeakName
-  AdjustedPromoterPeak <- lapply(GeneList, function(PeakName){
+  
+  AdjustedPromoterPeak <- mclapply(GeneList, function(PeakName){
     GetAdjCountDESeq(dds = DESseqOut, Gene = PeakName, adjCov = AdjCovar) %>% t %>% data.frame
-  }) %>% rbindlist()#, mc.cores = detectCores()) %>% rbindlist()
+  }, mc.cores = detectCores()) %>% rbindlist()
   
   names(AdjustedPromoterPeak) <- attr(DESseqOut, "colData")$SampleID
   
@@ -1058,4 +1060,3 @@ ggsave(paste0(ResultsPath,"CorDLG2.pdf"),
        device = "pdf", Plot, width = 5, height = 2.5, dpi = 300, useDingbats = F)
 
 save.image(file = "GeneralResults/PVNBBcomparison.RData")
-save(CommonRegions, MergedChIPrna, file = paste0(ResultsPath, "CombinedData.Rda"))
