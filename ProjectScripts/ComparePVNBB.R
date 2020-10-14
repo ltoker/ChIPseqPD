@@ -456,23 +456,23 @@ SignifGenesOverlapDF %<>% mutate_if(is.numeric, function(x) signif(x, digits = 2
 write.table(SignifGenesOverlapDF, paste0(ResultsPath, "ReplicatedGenes.tsv"), sep = "\t", row.names = F, col.names = T)
 
 #Hypoacetylated genes
-dhyper(x = length(SignifGenesOverlapDown),  #number of genes hypoacetylated DARs in both cohorts
+phyper(q  = length(SignifGenesOverlapDown)-1,  #number of genes hypoacetylated DARs in both cohorts
        m = nrow(SignifGenesPVdown), #number of genes with hypoacetylated DARs in PV cohort
        n = length(AllGenesOverlap) - length(SignifGenesPVdown), #number of genes represented by ChIP data in both cohorts exluding genes with hypoacetylated DARs in PV cohort, which are not NAs, miRNAs and snRNAs
-       k = nrow(SignifGenesNBBdown)) #number of genes with hypoacetylated DARs in NBB cohort
+       k = nrow(SignifGenesNBBdown), lower.tail = F) #number of genes with hypoacetylated DARs in NBB cohort
 
 #Hyperacetylated genes
-dhyper(x = length(SignifGenesOverlapUp),  #number of genes hypoacetylated DARs in both cohorts
+phyper(q = length(SignifGenesOverlapUp) -1,  #number of genes hypoacetylated DARs in both cohorts
        m = nrow(SignifGenesPVup), #number of genes with hypoacetylated DARs in PV cohort
        n = length(AllGenesOverlap) - length(SignifGenesPVdown), #number of genes represented by ChIP data in both cohorts exluding genes with hypoacetylated DARs in PV cohort, which are not NAs, miRNAs and snRNAs
-       k = nrow(SignifGenesNBBup)) #number of genes with hypoacetylated DARs in NBB cohort
+       k = nrow(SignifGenesNBBup), lower.tail = F) #number of genes with hypoacetylated DARs in NBB cohort
 
 ##Hypergeometric test for DAR overlap.
 #Genes are excluded if they were filtered out based on DESeq2 independent filtering
-dhyper(x = nrow(CommonRegions %>% filter(CohorSignif == "Both") %>% filter(!(duplicated(CommonPair)))),
+phyper(q = nrow(CommonRegions %>% filter(CohorSignif == "Both") %>% filter(!(duplicated(CommonPair)))) -1,
        m = nrow(CommonRegions %>% filter(CohorSignif %in%  c("PV only", "Both"))%>% filter(!(duplicated(CommonPair)))),
        n = nrow(CommonRegions %>% filter(!CohorSignif %in%  c("PV only", "Both")) %>% filter(!(duplicated(CommonPair)))),
-       k = nrow(CommonRegions %>% filter(CohorSignif %in%  c("NBB only", "Both")) %>% filter(!(duplicated(CommonPair)))))
+       k = nrow(CommonRegions %>% filter(CohorSignif %in%  c("NBB only", "Both")) %>% filter(!(duplicated(CommonPair)))), lower.tail = F)
 
 
 #Hypergeomettric test for enrichment of PD implicated genes:
@@ -485,10 +485,10 @@ PDsignifGenesPV <- PDallGenesPV %>% filter(padj < 0.05)
 PDsignifGenesNBB <- PDallGenesNBB %>% filter(padj < 0.05)
 PDsignifOverlap <- intersect(PDsignifGenesPV$symbol, PDsignifGenesNBB$symbol)
 
-dhyper(x = length(PDsignifOverlap),  #number of PD hits with DARs in both cohorts
+phyper(q = length(PDsignifOverlap)-1,  #number of PD hits with DARs in both cohorts
        m = length(PDallOverlap), #number of PD hits appearing in both cohorts
        n = length(AllGenesOverlap), #number of genes represented by ChIP data in both cohorts which are not PDgene, NAs, miRNAs and snRNAs
-       k = length(SignifGenesOverlap)) #number of genes with DARs in the same direction in both cohorts
+       k = length(SignifGenesOverlap),lower.tail = F) #number of genes with DARs in the same direction in both cohorts
 
 
 #Hypergeomettric test for enrichment of GWAS in based on metaP:
@@ -497,10 +497,10 @@ CommonPDgene_DARs <- CommonRegions %>% arrange(metaP) %>% filter(PDgene == "Yes"
 AllCommonPeakGenes <- CommonRegions %>% arrange(metaP) %>% filter(PDgene == "No") %>%  filter(!duplicated(symbol))
 SignifCommonPeakGenes <- CommonRegions %>% arrange(metaP) %>% filter(AdjmetaP < 0.05) %>%  filter(!duplicated(symbol))
 
-dhyper(x = nrow(CommonPDgene_DARs),  #number of PD genes with common DARs in both cohorts
+phyper(q = nrow(CommonPDgene_DARs) -1,  #number of PD genes with common DARs in both cohorts
        m = nrow(CommonPDgeneAll), #number of PD genes common regions in both cohortsn
        n = nrow(AllCommonPeakGenes), #number of genes represented by ChIP data in both cohorts which are not PD genes, NAs, miRNAs and snRNAs
-       k =  nrow(SignifCommonPeakGenes)) #number of genes with common regions with adjusted metaP < 0.05 
+       k =  nrow(SignifCommonPeakGenes), lower.tail = F) #number of genes with common regions with adjusted metaP < 0.05 
 
 #Venn diagrams
 packageF("RVenn")
