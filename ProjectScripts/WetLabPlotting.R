@@ -314,3 +314,38 @@ Plot <- ggplot(DataDrugs) +
   #                               "cadetblue4", "cadetblue3", "aquamarine4","darkmagenta" ))
   facet_wrap(~Measure, nrow = 3)
 ggsave(paste0(ResultsPath,"DrugTreatment.pdf"), Plot, device = "pdf", width = 6, height = 4, dpi = 300, useDingbats = F)
+
+
+#Sirtuin inhibitors
+
+DataSirtInhib <- read.table("data/SirtInhibWB_Final.txt", header = T, sep = "\t")
+DataSirtInhib %<>% mutate(H3K27ac_H3 = H3K27ac/H3,
+                          H3_GAPDH = H3/GAPDH) 
+DataSirtInhib$Group <- sapply(DataSirtInhib$Sample, function(x){
+  strsplit(x, "_")[[1]][1]
+}) 
+
+DataSirtInhib$BioRep <- sapply(DataSirtInhib$Sample, function(x){
+  strsplit(x, "_")[[1]][2]
+}) 
+
+DataSirtInhib <- sapply(unique(DataSirtInhib$Blot), function(blot){
+  data <- DataSirtInhib %>% filter(Blot == blot)
+  data$H3K27_H3rescaled <- rescale(data$H3K27ac_H3, c(0,1))
+  data$H3_GAPDHrescaled <- rescale(data$H3_GAPDH, c(0,1))
+  data
+}, simplify  = F) %>% rbindlist %>% data.frame()  
+
+DataSirtInhib$Group <- factor(DataSirtInhib$Group, levels =  unique(DataSirtInhib$Group))
+
+
+
+Plot <- ggplot(DataSirtInhib) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.grid= element_blank()) +
+  labs(x = "", y = "Ratio") +
+  geom_boxplot(aes(Group, H3K27_H3rescaled), fill = "grey", alpha = 0.5, outlier.shape = NA, show.legend = F) +
+  geom_jitter(aes(Group, H3K27_H3rescaled, color = BioRep), height = 0, width = 0.2, size = 4, show.legend = F) +
+  scale_color_manual(values = c('royalblue', "palevioletred4", "darkolivegreen4"))
+ggsave(paste0(ResultsPath,"SirtInhib.pdf"), Plot, device = "pdf", width = 6, height = 4, dpi = 300, useDingbats = F)
